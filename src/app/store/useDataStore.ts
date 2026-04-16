@@ -22,9 +22,11 @@ import {
   rpcExtendSubscription, rpcAdjustBalance,
   rpcToggleTraineeStatus, rpcToggleTrainerStatus, rpcTogglePackageActive,
   rpcAdminCreateTrainee, rpcAdminCreateTrainer,
+  rpcAdminUpdateTrainee, rpcAdminUpdateTrainer,
   insertSession, insertPackage,
-  updateProfileSelf, updateTrainerProfile, updatePackageFields,
+  updateProfileSelf, updatePackageFields,
 } from '../api/rpc';
+import type { UpdateTraineeInput, UpdateTrainerInput } from '../api/rpc';
 import type { NewTraineeInput, NewTrainerInput, NewSessionInput, NewPackageInput } from '../api/rpc';
 
 // ─── نتائج العمليات ────────────────────────────────────────────────────────
@@ -103,48 +105,8 @@ interface DataState {
   createPackage: (input: NewPackageInput) => Promise<ActionResult>;
 }
 
-// ─── Role-based loaders ───────────────────────────────────────────────────
-// تقلل عدد الـ queries حسب الدور. تُستخدم من داخل `initialize()`.
-
-type SetFn = (partial: Partial<DataState>) => void;
-
-async function loadForTrainer(set: SetFn): Promise<void> {
-  const branches = await fetchBranches();
-  const results = await Promise.allSettled([
-    fetchSessions(),
-    fetchBookings(),
-    fetchTrainees(branches), // قائمة المتدربات المسجلات في جلسات المدربة (محمية بـ RLS)
-  ]);
-  const [rSessions, rBookings, rTrainees] = results;
-  const patch: Partial<DataState> = {};
-  if (rSessions.status === 'fulfilled') patch.sessions = rSessions.value;
-  else console.error('[loadForTrainer sessions]', rSessions.reason);
-  if (rBookings.status === 'fulfilled') patch.bookings = rBookings.value;
-  else console.error('[loadForTrainer bookings]', rBookings.reason);
-  if (rTrainees.status === 'fulfilled') patch.trainees = rTrainees.value;
-  else console.error('[loadForTrainer trainees]', rTrainees.reason);
-  set(patch);
-}
-
-async function loadForTrainee(set: SetFn): Promise<void> {
-  const results = await Promise.allSettled([
-    fetchSessions(),  // الجلسات المتاحة (RLS يحد الرؤية)
-    fetchBookings(),  // حجوزات المتدربة نفسها
-    fetchPackages(),  // للإطلاع على باقتها وتفاصيلها
-    fetchLedger(),    // رصيد الجلسات
-  ]);
-  const [rSessions, rBookings, rPackages, rLedger] = results;
-  const patch: Partial<DataState> = {};
-  if (rSessions.status === 'fulfilled') patch.sessions = rSessions.value;
-  else console.error('[loadForTrainee sessions]', rSessions.reason);
-  if (rBookings.status === 'fulfilled') patch.bookings = rBookings.value;
-  else console.error('[loadForTrainee bookings]', rBookings.reason);
-  if (rPackages.status === 'fulfilled') patch.packages = rPackages.value;
-  else console.error('[loadForTrainee packages]', rPackages.reason);
-  if (rLedger.status === 'fulfilled') patch.ledger = rLedger.value;
-  else console.error('[loadForTrainee ledger]', rLedger.reason);
-  set(patch);
-}
+// Role-based loaders extracted to ./loaders.ts for separation of concerns.
+import { loadForTrainer, loadForTrainee } from './loaders';
 
 // ─── Store Factory ────────────────────────────────────────────────────────
 export const useDataStore = create<DataState>()((set, get) => ({
@@ -339,73 +301,57 @@ export const useDataStore = create<DataState>()((set, get) => ({
   },
 
   updateTrainee: async (traineeId, patch) => {
-    const { supabase } = await import('../lib/supabase');
-
-    // ── 1) تحديث profiles (name, email, phone, status) ──
-    const profilePatch: Record<string, unknown> = {};
-    if (patch.name   !== undefined) profilePatch.name   = patch.name;
-    if (patch.phone  !== undefined) profilePatch.phone  = patch.phone;
-    if (patch.email  !== undefined) profilePatch.email  = patch.email;
-    // تمرير status كما هي (active | suspended | inactive) — يدعمها enum في DB
-    if (patch.status !== undefined) profilePatch.status  = patch.status;
-
-    if (Object.keys(profilePatch).length > 0) {
-      const { error } = await supabase.from('profiles').update(profilePatch).eq('id', traineeId);
-      if (error) return { ok: false, reason: error.message };
-    }
-
-    // ── 2) تحديث trainees (gender, birth_date, branch_id, level, notes) ──
-    const traineePatch: Record<string, unknown> = {};
-    if (patch.gender    !== undefined) traineePatch.gender     = patch.gender;
-    if (patch.birthDate !== undefined) traineePatch.birth_date = patch.birthDate;
-    if (patch.level     !== undefined) traineePatch.level      = patch.level;
-    if (patch.notes     !== undefined) traineePatch.notes      = patch.notes;
-
-    // الواجهة تمرر اسم الفرع (branch) وليس branch_id — نبحث عنه
+    // اسم الفرع من UI يجب تحويله إلى branch_id
+    let branchId: string | undefined;
     if (patch.branch !== undefined) {
-      const { data: branchRows } = await supabase.from('branches').select('id').eq('name', patch.branch).limit(1);
-      if (branchRows && branchRows.length > 0) {
-        traineePatch.branch_id = branchRows[0].id;
+      const branches = await fetchBranches();
+      // reverse lookup: name → id
+      for (const [id, name] of branches.entries()) {
+        if (name === patch.branch) { branchId = id; break; }
       }
     }
 
-    if (Object.keys(traineePatch).length > 0) {
-      const { error } = await supabase.from('trainees').update(traineePatch).eq('id', traineeId);
-      if (error) return { ok: false, reason: error.message };
-    }
+    const rpcPatch: UpdateTraineeInput = {
+      name:       patch.name,
+      email:      patch.email,
+      phone:      patch.phone,
+      status:     patch.status,
+      gender:     patch.gender,
+      birth_date: patch.birthDate,
+      branch_id:  branchId,
+      level:      patch.level,
+      notes:      patch.notes,
+    };
+
+    const res = await rpcAdminUpdateTrainee(traineeId, rpcPatch);
+    if (!res.ok) return { ok: false, reason: res.reason };
 
     await get().refreshTrainees();
     return { ok: true };
   },
 
   updateTrainer: async (trainerId, patch) => {
-    const { supabase } = await import('../lib/supabase');
-    // الحقول على profiles (name/email/phone) ⇄ على trainers (specialty/branch)
-    const profilePatch: Record<string, unknown> = {};
-    if (patch.name  !== undefined) profilePatch.name  = patch.name;
-    if (patch.phone !== undefined) profilePatch.phone = patch.phone;
-    if (patch.email !== undefined) profilePatch.email = patch.email;
-
-    if (Object.keys(profilePatch).length > 0) {
-      const { error } = await supabase.from('profiles').update(profilePatch).eq('id', trainerId);
-      if (error) return { ok: false, reason: error.message };
-    }
-
-    const trainerPatch: Record<string, unknown> = {};
-    if (patch.specialty !== undefined) trainerPatch.specialty = patch.specialty;
-
-    // patch.branch هو اسم الفرع — نبحث عن branch_id
+    // اسم الفرع من UI يجب تحويله إلى branch_id
+    let branchId: string | undefined;
     if (patch.branch !== undefined) {
-      const { data: branchRows } = await supabase.from('branches').select('id').eq('name', patch.branch).limit(1);
-      if (branchRows && branchRows.length > 0) {
-        trainerPatch.branch_id = branchRows[0].id;
+      const branches = await fetchBranches();
+      for (const [id, name] of branches.entries()) {
+        if (name === patch.branch) { branchId = id; break; }
       }
     }
 
-    if (Object.keys(trainerPatch).length > 0) {
-      const res = await updateTrainerProfile(trainerId, trainerPatch);
-      if (!res.ok) return { ok: false, reason: res.reason };
-    }
+    const rpcPatch: UpdateTrainerInput = {
+      name:      patch.name,
+      email:     patch.email,
+      phone:     patch.phone,
+      status:    patch.status,
+      specialty: patch.specialty,
+      branch_id: branchId,
+    };
+
+    const res = await rpcAdminUpdateTrainer(trainerId, rpcPatch);
+    if (!res.ok) return { ok: false, reason: res.reason };
+
     await get().refreshTrainers();
     return { ok: true };
   },

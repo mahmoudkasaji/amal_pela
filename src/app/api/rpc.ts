@@ -208,6 +208,66 @@ export async function rpcAdminCreateTrainer(input: NewTrainerInput): Promise<Rpc
   return { ok: true, data: data as string };
 }
 
+// ─── Admin update RPCs (replace direct table writes) ───────────────────────
+
+export interface UpdateTraineeInput {
+  name?: string;
+  email?: string;
+  phone?: string;
+  status?: 'active' | 'suspended' | 'inactive';
+  gender?: 'male' | 'female';
+  birth_date?: string;
+  branch_id?: string;
+  level?: 'beginner' | 'intermediate' | 'advanced';
+  notes?: string;
+}
+
+export async function rpcAdminUpdateTrainee(
+  traineeId: string,
+  patch: UpdateTraineeInput,
+): Promise<RpcResult> {
+  const { error } = await supabase.rpc('admin_update_trainee', {
+    p_trainee_id: traineeId,
+    p_name:       patch.name       ?? null,
+    p_email:      patch.email      ?? null,
+    p_phone:      patch.phone      ?? null,
+    p_status:     patch.status     ?? null,
+    p_gender:     patch.gender     ?? null,
+    p_birth_date: patch.birth_date ?? null,
+    p_branch_id:  patch.branch_id  ?? null,
+    p_level:      patch.level      ?? null,
+    p_notes:      patch.notes      ?? null,
+  });
+  if (error) return { ok: false, reason: translateError(error.message) };
+  return { ok: true };
+}
+
+export interface UpdateTrainerInput {
+  name?: string;
+  email?: string;
+  phone?: string;
+  status?: 'active' | 'suspended' | 'inactive';
+  specialty?: string;
+  branch_id?: string;
+}
+
+export async function rpcAdminUpdateTrainer(
+  trainerId: string,
+  patch: UpdateTrainerInput,
+): Promise<RpcResult> {
+  const { error } = await supabase.rpc('admin_update_trainer', {
+    p_trainer_id: trainerId,
+    p_name:       patch.name      ?? null,
+    p_email:      patch.email     ?? null,
+    p_phone:      patch.phone     ?? null,
+    p_status:     patch.status    ?? null,
+    p_specialty:  patch.specialty ?? null,
+    p_branch_id:  patch.branch_id ?? null,
+  });
+  if (error) return { ok: false, reason: translateError(error.message) };
+  return { ok: true };
+}
+
 // ─── Direct INSERT helpers (admin has RLS write permission) ────────────────
 
 export interface NewSessionInput {
