@@ -61,7 +61,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (authUser) {
         setUser(authUser);
         setAuthError(null);
-        useDataStore.getState().initialize().catch(console.error);
+        // تحميل البيانات حسب دور المستخدم لتقليل الاستعلامات
+        useDataStore.getState().initialize(authUser.role).catch(console.error);
       } else {
         // مصادقة ناجحة لكن فشل تحميل الملف الشخصي
         setAuthError('تعذّر تحميل بيانات الملف الشخصي. يرجى المحاولة مرة أخرى.');

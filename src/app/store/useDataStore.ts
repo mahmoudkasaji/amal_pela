@@ -9,7 +9,7 @@
  */
 
 import { create } from 'zustand';
-import type { Trainee, Trainer, Package, Session, Booking, LedgerEntry } from '../data/types';
+import type { Trainee, Trainer, Package, Session, Booking, LedgerEntry, UserRole } from '../data/types';
 import {
   fetchTrainees, fetchTrainers, fetchPackages,
   fetchSessions, fetchBookings, fetchLedger, fetchBranches,
@@ -52,7 +52,13 @@ interface DataState {
   ledger:   LedgerEntry[];
 
   // ─── lifecycle ─────
-  initialize: () => Promise<void>;
+  /**
+   * يُحمِّل البيانات حسب دور المستخدم لتقليل عدد الاستعلامات.
+   * - admin: يحمّل كل الكيانات (6 استعلامات)
+   * - trainer: يحمّل sessions + bookings + trainees (3 استعلامات)
+   * - trainee: يحمّل sessions + bookings + packages + ledger (4 استعلامات)
+   */
+  initialize: (role?: UserRole) => Promise<void>;
   refresh:    () => Promise<void>;
   reset:      () => void;
 
@@ -97,6 +103,49 @@ interface DataState {
   createPackage: (input: NewPackageInput) => Promise<ActionResult>;
 }
 
+// ─── Role-based loaders ───────────────────────────────────────────────────
+// تقلل عدد الـ queries حسب الدور. تُستخدم من داخل `initialize()`.
+
+type SetFn = (partial: Partial<DataState>) => void;
+
+async function loadForTrainer(set: SetFn): Promise<void> {
+  const branches = await fetchBranches();
+  const results = await Promise.allSettled([
+    fetchSessions(),
+    fetchBookings(),
+    fetchTrainees(branches), // قائمة المتدربات المسجلات في جلسات المدربة (محمية بـ RLS)
+  ]);
+  const [rSessions, rBookings, rTrainees] = results;
+  const patch: Partial<DataState> = {};
+  if (rSessions.status === 'fulfilled') patch.sessions = rSessions.value;
+  else console.error('[loadForTrainer sessions]', rSessions.reason);
+  if (rBookings.status === 'fulfilled') patch.bookings = rBookings.value;
+  else console.error('[loadForTrainer bookings]', rBookings.reason);
+  if (rTrainees.status === 'fulfilled') patch.trainees = rTrainees.value;
+  else console.error('[loadForTrainer trainees]', rTrainees.reason);
+  set(patch);
+}
+
+async function loadForTrainee(set: SetFn): Promise<void> {
+  const results = await Promise.allSettled([
+    fetchSessions(),  // الجلسات المتاحة (RLS يحد الرؤية)
+    fetchBookings(),  // حجوزات المتدربة نفسها
+    fetchPackages(),  // للإطلاع على باقتها وتفاصيلها
+    fetchLedger(),    // رصيد الجلسات
+  ]);
+  const [rSessions, rBookings, rPackages, rLedger] = results;
+  const patch: Partial<DataState> = {};
+  if (rSessions.status === 'fulfilled') patch.sessions = rSessions.value;
+  else console.error('[loadForTrainee sessions]', rSessions.reason);
+  if (rBookings.status === 'fulfilled') patch.bookings = rBookings.value;
+  else console.error('[loadForTrainee bookings]', rBookings.reason);
+  if (rPackages.status === 'fulfilled') patch.packages = rPackages.value;
+  else console.error('[loadForTrainee packages]', rPackages.reason);
+  if (rLedger.status === 'fulfilled') patch.ledger = rLedger.value;
+  else console.error('[loadForTrainee ledger]', rLedger.reason);
+  set(patch);
+}
+
 // ─── Store Factory ────────────────────────────────────────────────────────
 export const useDataStore = create<DataState>()((set, get) => ({
   initialized: false,
@@ -112,11 +161,19 @@ export const useDataStore = create<DataState>()((set, get) => ({
   // ════════════════════════════════════════════════════════════════════════
   // Lifecycle
   // ════════════════════════════════════════════════════════════════════════
-  initialize: async () => {
+  initialize: async (role) => {
     if (get().initialized) return;
     set({ loading: true });
     try {
-      await get().refresh();
+      // Route to role-specific loader to minimize network round-trips
+      if (role === 'trainer') {
+        await loadForTrainer(set);
+      } else if (role === 'trainee') {
+        await loadForTrainee(set);
+      } else {
+        // admin (default): full refresh
+        await get().refresh();
+      }
       set({ initialized: true });
     } finally {
       set({ loading: false });

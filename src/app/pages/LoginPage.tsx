@@ -116,6 +116,10 @@ export default function LoginPage() {
           key={role.image}
           src={role.image}
           alt=""
+          loading="eager"
+          decoding="async"
+          // @ts-expect-error fetchpriority is a valid HTML attr not yet in React types
+          fetchpriority="high"
           onLoad={() => setImgLoaded(true)}
           className="absolute inset-0 w-full h-full object-cover transition-all duration-700"
           style={{ opacity: imgLoaded && !transitioning ? 1 : 0 }}

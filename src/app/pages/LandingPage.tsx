@@ -19,11 +19,11 @@ import {
 } from 'lucide-react';
 
 // ─── Images ─────────────────────────────────────────────────────────────────
-const IMG_HERO   = 'https://images.unsplash.com/photo-1769610712786-60f5f6e727ce?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1600';
-const IMG_ABOUT  = 'https://images.unsplash.com/photo-1717500251880-e8209ae23fa8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900';
-const IMG_2      = 'https://images.unsplash.com/photo-1637066189302-8d2a241ea9f2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600';
-const IMG_3      = 'https://images.unsplash.com/photo-1717500252072-908accb18f55?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=600';
-const IMG_STUDIO = 'https://images.unsplash.com/photo-1676496962536-d8ef110ff6f0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=900';
+const IMG_HERO   = 'https://images.unsplash.com/photo-1769610712786-60f5f6e727ce?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1200';
+const IMG_ABOUT  = 'https://images.unsplash.com/photo-1717500251880-e8209ae23fa8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=700';
+const IMG_2      = 'https://images.unsplash.com/photo-1637066189302-8d2a241ea9f2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=500';
+const IMG_3      = 'https://images.unsplash.com/photo-1717500252072-908accb18f55?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=500';
+const IMG_STUDIO = 'https://images.unsplash.com/photo-1676496962536-d8ef110ff6f0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=700';
 
 // ─── Data ──────────────────────────────────────────────────────────────────
 const sessions = [
@@ -275,7 +275,15 @@ export default function LandingPage() {
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         {/* Full-bleed image */}
         <div className="absolute inset-0">
-          <img src={IMG_HERO} alt="" className="w-full h-full object-cover object-center" />
+          <img
+            src={IMG_HERO}
+            alt=""
+            loading="eager"
+            // @ts-expect-error fetchpriority is a valid HTML attr not yet in React types
+            fetchpriority="high"
+            decoding="async"
+            className="w-full h-full object-cover object-center"
+          />
           {/* Layer 1 — white/blush wash to soften and desaturate the image colours */}
           <div className="absolute inset-0" style={{ background: 'rgba(255, 240, 245, 0.35)' }} />
           {/* Layer 2 — dark gradient scrim for text readability */}
@@ -394,9 +402,9 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
           {/* Images */}
           <div className="grid grid-cols-2 gap-3">
-            <img src={IMG_ABOUT}  alt="المركز" className="col-span-2 rounded-2xl object-cover h-60 w-full" />
-            <img src={IMG_2}      alt="جلسة"   className="rounded-2xl object-cover h-44 w-full" />
-            <img src={IMG_3}      alt="تمارين" className="rounded-2xl object-cover h-44 w-full" />
+            <img src={IMG_ABOUT}  alt="المركز" loading="lazy" decoding="async" className="col-span-2 rounded-2xl object-cover h-60 w-full" />
+            <img src={IMG_2}      alt="جلسة"   loading="lazy" decoding="async" className="rounded-2xl object-cover h-44 w-full" />
+            <img src={IMG_3}      alt="تمارين" loading="lazy" decoding="async" className="rounded-2xl object-cover h-44 w-full" />
           </div>
 
           {/* Text */}
@@ -646,6 +654,8 @@ export default function LandingPage() {
                       <img
                         src={stepImages[i]}
                         alt=""
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover"
                         style={{ filter: 'saturate(0.7) brightness(1.05)' }}
                       />
