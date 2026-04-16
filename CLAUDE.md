@@ -1,300 +1,212 @@
-# خطة إعادة تأهيل مشروع Serene Studio (Amal Pilates) — Production-Ready
+# Serene Studio (Amal Pilates) — Developer Guide
 
-## Context
-
-بعد مراجعة شاملة للمشروع تبيّن أن الحالة الحالية — رغم أن البنية الأساسية سليمة — تعاني من مشاكل جوهرية تؤثر على:
-
-- **الاستقرار**: تعليق شاشة التحميل، تعارض بين طبقات البيانات، 46% من migrations هي إصلاحات متأخرة
-- **الأداء**: 7 استعلامات متوازية على كل تهيئة، حزمة JS ~1 MB، 12 صورة Unsplash خارجية
-- **سلامة البيانات**: bug منطقي حيث `suspended` للمدربة تظهر كـ `active` في الواجهة، وفقدان دلالة `inactive` للمتدربة
-- **قابلية الصيانة**: `useDataStore.ts` (420 سطر)، `LandingPage.tsx` (1,050 سطر)، `Trainees.tsx` (657 سطر) — ملفات تجمع مسؤوليات متعددة
-- **النشر**: صفحة بيضاء على GitHub Pages بسبب تضارب في إعداد base path + SPA routing + missing env secrets
-
-هذه الخطة تُقسّم العمل على **9 مراحل مترابطة** (0-8) بحيث تُنفَّذ كل مرحلة بشكل مستقل وقابلة للاختبار. الهدف النهائي: نظام مستقر، سريع، قابل للصيانة، وجاهز للإنتاج 100%.
+بوابة إدارة وتشغيل نادي تدريب بيلاتس. Production-ready React + Supabase app.
 
 ---
 
-## Phase 0: إنقاذ النشر (Emergency: Blank Page + Deployment)
+## Stack
 
-**الأولوية:** حرجة — الموقع المنشور لا يعمل حالياً.
-**القرار:** الانتقال من GitHub Pages إلى **Vercel**.
-
-### 0.1 العودة إلى BrowserRouter
-- `src/app/routes.tsx` — `createHashRouter` → `createBrowserRouter`
-- `vite.config.ts` — إزالة `base` المشروط (يبقى `/`)
-
-### 0.2 إعداد Vercel
-- إنشاء `vercel.json` مع SPA rewrites:
-  ```json
-  {
-    "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-  }
-  ```
-- إزالة `.github/workflows/deploy.yml` (أو الإبقاء معطلاً)
-- تجهيز دليل خطوة بخطوة للمستخدم
-
-### 0.3 ملفات متأثرة
-- `src/app/routes.tsx`
-- `vite.config.ts`
-- `vercel.json` (جديد)
-- `.github/workflows/deploy.yml` (حذف أو تعطيل)
+- **Frontend:** React 18, TypeScript 5.6, Vite 6, React Router 7
+- **Backend:** Supabase (PostgreSQL + Auth + RLS + RPCs)
+- **State:** Zustand
+- **UI:** Tailwind CSS v4 + shadcn/ui (Radix) + Lucide icons
+- **Charts:** Recharts (code-split in a separate chunk)
+- **Fonts:** IBM Plex Sans Arabic + Cairo (Arabic-first)
+- **Deployment:** Vercel
 
 ---
 
-## Phase 1: تنظيف البنية التحتية والبيئة
+## Quick start
 
-### 1.1 مراجعة `.gitignore`
-- التأكد من استبعاد: `node_modules/`, `dist/`, `.env.local`, `*.log`, `.vite/`, `coverage/`
-- `bun.lock` يبقى مُتتبعاً
-
-### 1.2 تحسين رسائل الخطأ
-- `src/app/lib/supabase.ts` — استبدال `throw` القاتل برسالة ودية
-- إضافة fallback UI إذا env variables مفقودة
-
-### 1.3 أدوات جودة الكود
-- `.eslintrc.json` (إعداد بسيط)
-- `.prettierrc`
-- `.editorconfig`
-- scripts في `package.json`: `lint`, `format`
-
-### 1.4 ملفات متأثرة
-- `.gitignore`, `src/app/lib/supabase.ts`, `.eslintrc.json`, `.prettierrc`, `.editorconfig`, `package.json`, `README.md`
-
----
-
-## Phase 2: إصلاحات اتساق البيانات الحرجة
-
-### 2.1 إصلاح `Trainer.status` — bug منطقي
-**المشكلة:** `entities.ts:190`:
-```typescript
-status: row.status === 'inactive' ? 'inactive' : 'active'
-```
-مدربة `suspended` تظهر كـ `active`!
-
-**الحل:**
-- `Trainer.status` → `'active' | 'suspended' | 'inactive'`
-- `mapTrainer` يمرر القيمة كما هي
-- تسميات عربية في `constants.ts`: `active`→"نشطة"، `suspended`→"موقوفة"، `inactive`→"غير نشطة"
-
-### 2.2 إصلاح `Trainee.status` — فقدان دلالي
-**المشكلة:** `mapTrainee:109` يحوّل `inactive` → `suspended`.
-
-**الحل:**
-- `Trainee.status` → `'active' | 'suspended' | 'inactive'`
-- `mapTrainee` بدون تحويل
-- تحديث الفلاتر والبادجات في Admin
-
-### 2.3 ملفات متأثرة
-- `src/app/data/types.ts`
-- `src/app/api/entities.ts`
-- `src/app/data/constants.ts`
-- `src/app/pages/admin/Trainers.tsx`, `Trainees.tsx`
-
----
-
-## Phase 3: تحسين الأداء
-
-### 3.1 تحميل البيانات حسب الدور
-- `initializeForAdmin()` — كل الكيانات
-- `initializeForTrainer()` — sessions + bookings + trainees (المعنيون فقط)
-- `initializeForTrainee()` — sessions المتاحة + bookings خاصته + باقته
-- `AuthContext` يستدعي الدالة الصحيحة
-
-### 3.2 تقسيم الحزمة (manualChunks)
-```typescript
-// vite.config.ts
-build: {
-  rollupOptions: {
-    output: {
-      manualChunks: {
-        'react-vendor': ['react', 'react-dom', 'react-router'],
-        'supabase': ['@supabase/supabase-js'],
-        'radix': [...],
-        'charts': ['recharts'],
-        'forms': ['react-hook-form'],
-        'date': ['date-fns'],
-      }
-    }
-  }
-}
+```bash
+bun install            # install deps
+cp .env.local.example .env.local   # fill in Supabase URL + anon key
+bun run dev            # start dev server at http://localhost:5173
+bun run typecheck      # TypeScript check
+bun run lint           # ESLint
+bun run format         # Prettier
+bun run build          # production build
 ```
 
-### 3.3 الصور الخارجية
-- إضافة `loading="lazy"` على كل `<img>` خارجي
-- تقليل عرض URL Unsplash (w=800 بدل w=1600)
-- خيار لاحق: استضافة محلياً
+---
 
-### 3.4 حذف تبعيات غير مستخدمة
-فحص وحذف: `react-slick`, `react-dnd`, `react-responsive-masonry`, `canvas-confetti`
+## Project structure
 
-### 3.5 ملفات متأثرة
-- `src/app/store/useDataStore.ts`, `AuthContext.tsx`, `vite.config.ts`, `LandingPage.tsx`, `LoginPage.tsx`, `package.json`
+```
+src/app/
+├── api/                       # طبقة الـ API (domain-split)
+│   ├── _shared.ts             # RpcResult + translateError
+│   ├── auth.api.ts            # resolveLoginEmail
+│   ├── branches.api.ts        # Branch CRUD
+│   ├── session-types.api.ts   # SessionType CRUD
+│   ├── club-settings.api.ts   # ClubSettings
+│   ├── trainees.api.ts        # كل RPCs المتدربات
+│   ├── trainers.api.ts        # كل RPCs المدربات
+│   ├── sessions.api.ts        # جلسات
+│   ├── bookings.api.ts        # حجوزات
+│   ├── packages.api.ts        # باقات
+│   ├── ledger.api.ts          # سجل رصيد
+│   └── index.ts               # barrel re-exports
+├── components/                # UI مشترك
+│   ├── ErrorBoundary.tsx      # top-level boundary
+│   ├── RouteErrorBoundary.tsx # per-route (admin/trainer/trainee) boundary
+│   ├── ProtectedRoute.tsx     # role-based route guard
+│   ├── skeletons/Skeleton.tsx # loading placeholders
+│   └── ui/                    # shadcn components
+├── context/
+│   └── AuthContext.tsx
+├── data/
+│   ├── types.ts               # TypeScript interfaces
+│   └── constants.ts           # ACCOUNT_STATUS_CONFIG, LEVEL_MAP, STATUS_CONFIG
+├── layouts/                   # Admin/Trainer/Trainee layouts
+├── lib/
+│   ├── supabase.ts            # Supabase client (fails gracefully on missing env)
+│   ├── date.ts                # دوال التاريخ (تستخدم today() دائماً)
+│   ├── csv.ts                 # تصدير CSV
+│   ├── retry.ts               # exponential-backoff retry helper
+│   └── log.ts                 # centralized logger (wired for Sentry later)
+├── pages/
+│   ├── landing/               # Hero, About, Sessions, Packages, ...
+│   ├── login/                 # VisualPanel, RoleSelector, LoginForm
+│   ├── admin/
+│   │   ├── trainees/          # TraineesTable/Cards/Filters + Modals
+│   │   └── sessions/          # SessionsList + Add/EditSessionModal
+│   ├── trainer/
+│   └── trainee/
+├── store/
+│   ├── useDataStore.ts        # الـ Zustand store الرئيسي
+│   └── loaders.ts             # role-based data loaders
+├── routes.tsx                 # تعريف المسارات (lazy-loaded)
+└── App.tsx
+```
 
 ---
 
-## Phase 4: تقسيم Store وتوضيح مصدر الحقيقة
+## Conventions
 
-### 4.1 تقسيم حسب domain
-- `auth.store.ts`, `trainees.store.ts`, `trainers.store.ts`, `sessions.store.ts`, `packages.store.ts`, `settings.store.ts`
-- كل store < 150 سطر
+### Naming
+- DB columns: `snake_case`
+- TS interfaces/props: `camelCase`
+- Mappers in `*.api.ts` handle the conversion
 
-### 4.2 إزالة الكتابة المباشرة
-- كل `supabase.from().update()` في الـ store → RPC جديد في `rpc.ts`
-- `admin_update_trainee(...)` و `admin_update_trainer(...)` في DB
+### Data flow
+- **Read:** Supabase view/table → `mapX` in `*.api.ts` → Zustand store → UI
+- **Write:** UI → RPC wrapper in `*.api.ts` → DB → partial store refresh
+- **Never** call `supabase.from().update()` directly outside `api/`
+- All writes go through RPCs wherever possible (security + idempotency)
 
-### 4.3 قاعدة صارمة
-- القراءة: `entities.ts` → store → UI
-- الكتابة: UI → `rpc.ts` → DB → refresh store
+### AccountStatus (Phase 2 fix)
+- DB enum: `'active' | 'suspended' | 'inactive'`
+- UI matches exactly. Use `ACCOUNT_STATUS_CONFIG` from `data/constants.ts`
+- Historical bug: mappers used to silently collapse `suspended → active` for trainers. Fixed.
 
----
+### Role-based loading (Phase 3)
+- `initialize(role)` in the store picks the right loader:
+  - **Admin:** 6 queries (full refresh)
+  - **Trainer:** 3 queries (sessions, bookings, trainees)
+  - **Trainee:** 4 queries (sessions, bookings, packages, ledger)
+- Never assume a store entity is loaded unless the current role loads it.
 
-## Phase 5: تقسيم الصفحات الضخمة
+### Dates
+- Always use `today()` from `lib/date.ts` — never `new Date()` directly.
+- Arabic formatting via `formatShortArabic()` / `formatLongArabic()`.
+- Work week: Sunday–Thursday (Saudi calendar).
 
-**قاعدة عامة:** أي ملف `.tsx` > 300 سطر يُقسَّم.
+### Auth
+- Login via username (resolved to email by `resolve_login_email` RPC) or email directly.
+- Roles: `admin`, `trainer`, `trainee`.
+- RLS in Supabase is the real security boundary. Frontend guards are defense-in-depth.
+- Never store passwords in frontend types/state beyond form-local drafts.
 
-### 5.1 LandingPage (1,050 → ~100 سطر + 8 sections)
-`src/app/pages/landing/`: Hero, About, SessionsShowcase, Packages, Testimonials, Gallery, Contact, Footer
+### Security rules
+- No hardcoded credentials in source (Phase 1 fix).
+- Unified error messages ("اسم المستخدم أو كلمة المرور غير صحيحة") — prevents user enumeration.
+- `resolve_login_email` returns a fake email on miss to prevent enumeration via direct RPC.
+- All form inputs validated (min length, price > 0, no past session dates, etc.).
 
-### 5.2 LoginPage (450 → ~100 سطر + 4 components)
-`src/app/pages/login/`: RoleSelector, LoginForm, VisualPanel, roles.config.ts
+### Error handling
+- Use `{ ok: boolean, reason?: string }` for operation results.
+- `translateError()` in `api/_shared.ts` passes through P0001 Arabic messages.
+- Every route is wrapped in `RouteErrorBoundary` so errors are scoped.
+- Use `log.error(msg, err, ctx)` instead of `console.error`. Register a Sentry reporter via `setErrorReporter()`.
+- Use `withRetry(() => fn())` for transient network operations.
 
-### 5.3 admin/Trainees (657 → ~200 سطر + hooks + modals)
-`src/app/pages/admin/trainees/`: TraineesList, TraineeFilters, 3 Modals, useTraineeFilters hook
+### Performance
+- Bundle split via `vite.config.ts` manualChunks: `react-vendor`, `supabase`, `charts`, `radix`, `motion`, `icons`, `vendor`.
+- `index.js` is ~80 KB (down from 635 KB pre-Phase 3).
+- `charts` (Recharts) loaded lazily only for Dashboard/Reports.
+- Images on Landing/Login use `loading="lazy"` + `decoding="async"`; hero images use `fetchpriority="high"`.
+- Partial refreshes after mutations (`refreshBookings`, etc.) — never a full 6-query reload.
 
-### 5.4 admin/Sessions (560 → ~200 سطر)
-`src/app/pages/admin/sessions/`: SessionsList, AddSessionModal, EditSessionModal, hook
-
----
-
-## Phase 6: تنظيم طبقة API
-
-### 6.1 تقسيم `rpc.ts` → 8 ملفات `*.api.ts`
-- `auth.api.ts`, `trainees.api.ts`, `trainers.api.ts`, `sessions.api.ts`, `bookings.api.ts`, `packages.api.ts`, `settings.api.ts`
-- `src/app/api/index.ts` — re-exports + `translateError`
-
-### 6.2 تقسيم `entities.ts`
-كل ملف API يحتوي: DbRow types + mapper + fetch function
-
-### 6.3 نقل `updateSessionFields` من `entities.ts`
-→ `sessions.api.ts` (أو RPC آمن)
-
----
-
-## Phase 7: تنظيم Migrations
-
-### 7.1 النهج المحافظ (موصى به)
-- إبقاء الـ 13 migration كما هي
-- إنشاء `supabase/migrations/README.md` يشرح الترتيب
-- التأكد من idempotency (قابلة للتطبيق مرتين)
-
-### 7.2 تنظيم دوال SQL
-- تقسيم `functions.sql` حسب domain
-- COMMENT SQL على كل دالة رئيسية
-
----
-
-## Phase 8: الجاهزية للإنتاج
-
-### 8.1 Error Boundaries متخصصة
-- عام (موجود) + لكل route رئيسي
-- Error pages بحسب الدور
-
-### 8.2 Retry logic
-- `src/app/lib/retry.ts` — 3 محاولات مع exponential backoff
-
-### 8.3 Skeleton loaders
-- `src/app/components/skeletons/` — بدائل للـ spinner العام
-
-### 8.4 Logging wrapper
-- `src/app/lib/log.ts` — بديل عن `console.log` مع دعم Sentry لاحقاً
-
-### 8.5 Performance profiling
-- قياس FCP, LCP, TTI
-- Lighthouse Performance > 85
+### Page size rule
+- Any `.tsx` > 300 lines should be split into focused components.
+- Current maxima (Phase 5):
+  - `LandingPage.tsx`: 23 lines (composition)
+  - `LoginPage.tsx`: 126 lines
+  - `admin/Trainees.tsx`: 133 lines
+  - `admin/Sessions.tsx`: 261 lines
 
 ---
 
-## خريطة الملفات الحرجة
+## Database
 
-| الملف | الحالة | Phase |
-|-------|--------|-------|
-| `vite.config.ts` | base + no manualChunks | 0, 3 |
-| `src/app/routes.tsx` | HashRouter | 0 |
-| `src/app/data/types.ts` | status ناقص | 2 |
-| `src/app/api/entities.ts` | تحويلات صامتة، 284 سطر | 2, 6 |
-| `src/app/api/rpc.ts` | 332 سطر | 6 |
-| `src/app/store/useDataStore.ts` | 420 سطر، مسؤوليات مختلطة | 3, 4 |
-| `src/app/context/AuthContext.tsx` | initialize ثقيل | 3 |
-| `src/app/pages/LandingPage.tsx` | 1,050 سطر | 3, 5 |
-| `src/app/pages/LoginPage.tsx` | 450 سطر | 3, 5 |
-| `src/app/pages/admin/Trainees.tsx` | 657 سطر | 5 |
-| `src/app/pages/admin/Sessions.tsx` | 560 سطر | 5 |
-| `supabase/migrations/` | 6/13 fixes | 7 |
-| `vercel.json` | غير موجود | 0 |
+- Migrations in `supabase/migrations/` (see `migrations/README.md`).
+- **Never modify existing migration files** — only add new ones.
+- All RPCs are `SECURITY DEFINER` with explicit `search_path`.
+- Views prefixed with `v_` (e.g., `v_sessions_detail`).
+- Idempotency: every migration after 001_schema uses `CREATE OR REPLACE`, `IF NOT EXISTS`, etc.
+
+### Applied production-hardening migrations
+| # | File | Purpose |
+|---|------|---------|
+| 011 | `security_hardening.sql` | Anti-enumeration + STABLE hours_until + mark_attendance guard |
+| 012 | `db_integrity_fixes.sql` | CASCADE→RESTRICT, missing indexes, sessions.type FK |
+| 013 | `subscription_expiry.sql` | `expire_subscriptions()` for pg_cron |
+| 014 | `admin_update_rpcs.sql` | admin_update_trainee/trainer (replaces direct writes) |
 
 ---
 
-## نمط التنفيذ
+## Deployment
 
-**لكل Phase:**
-1. قراءة الملفات المتأثرة بعمق
-2. تنفيذ التغييرات (الحفاظ على السلوك)
-3. `bun run typecheck` — صفر أخطاء
-4. `bun run build` — بناء ناجح
-5. اختبار يدوي
-6. commit لكل Phase
-7. push إلى `main`
+The project is configured for **Vercel** (`vercel.json`):
 
----
+1. Import the GitHub repo on Vercel.
+2. Add env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+3. Build command auto-detected: `bun run build`.
+4. Output: `dist/`.
+5. SPA rewrites handled by `vercel.json`.
 
-## معايير التحقق
-
-### Phase 0
-- ✅ الموقع يفتح على Vercel بدون صفحة بيضاء
-- ✅ تسجيل الدخول يعمل
-- ✅ التنقل بدون hash
-
-### Phase 1
-- ✅ `bun run lint` نظيف
-- ✅ repo نظيف
-
-### Phase 2
-- ✅ مدربة `suspended` تظهر "موقوفة"
-- ✅ متدربة `inactive` تظهر "غير نشطة"
-
-### Phase 3
-- ✅ `index.js` < 300 KB
-- ✅ Trainee يحمّل < 3 استعلامات
-- ✅ Lighthouse Performance > 85
-
-### Phase 4
-- ✅ كل store < 150 سطر
-- ✅ لا كتابة مباشرة على Supabase في store
-
-### Phase 5
-- ✅ لا ملف `.tsx` > 300 سطر
-
-### Phase 6
-- ✅ `rpc.ts` و `entities.ts` محذوفان
-- ✅ لا `supabase.from(...)` خارج `api/`
-
-### Phase 7
-- ✅ Migrations idempotent
-- ✅ README موجود
-
-### Phase 8
-- ✅ Error Boundaries تلتقط الأخطاء
-- ✅ Retry logic يعمل
-- ✅ Skeletons ظاهرة
+After deploy, update Supabase Auth → URL Configuration:
+- Site URL: `https://<app>.vercel.app`
+- Redirect URLs: `https://<app>.vercel.app/**`
 
 ---
 
-## الاختبار النهائي (End-to-End)
+## Production-readiness checklist
 
-1. فتح الموقع على Vercel (< 2 ثانية)
-2. Admin: إنشاء متدربة → إسناد باقة
-3. Trainee: حجز → إلغاء
-4. Trainer: تسجيل حضور
-5. Admin: مراجعة التقارير + تصدير CSV
+- [x] No hardcoded credentials
+- [x] Anti-user-enumeration in login
+- [x] RLS on every table
+- [x] AccountStatus enum unified (3 states) across DB + UI
+- [x] Role-based data loading (min 3 queries on trainer/trainee)
+- [x] Manual chunks — index.js < 100 KB
+- [x] Lazy image loading
+- [x] Unused deps removed (react-slick, react-dnd, canvas-confetti, ...)
+- [x] Direct DB writes removed from store — all writes via RPC
+- [x] Large pages split (Landing, Login, Trainees, Sessions)
+- [x] API layer split into 11 domain modules
+- [x] Migrations documented (`migrations/README.md`)
+- [x] RouteErrorBoundary per role
+- [x] `withRetry` + `log` helpers
+- [x] Skeleton loaders
+- [x] ESLint + Prettier + EditorConfig
 
-كل خطوة < 2 ثانية (باستثناء التحميل الأول).
+---
+
+## Contributing
+
+1. Start from `main`.
+2. Run `bun run typecheck && bun run lint && bun run format:check` before commit.
+3. Follow the file-size rule (no `.tsx` > 300 lines).
+4. Keep Arabic text exact — no "improvements" to copy.
+5. For new RPCs, always create a migration file; never modify an existing one.

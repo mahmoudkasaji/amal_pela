@@ -3,12 +3,20 @@ import { createBrowserRouter } from 'react-router';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
 // Wrapper components — تُنفَّذ داخل React tree (داخل AuthProvider)
 // بدل `element: <ProtectedRoute />` الذي يُنشئ JSX عند تحميل الملف (خارج AuthProvider)
-function TraineeGuard() { return <ProtectedRoute allow="trainee" />; }
-function TrainerGuard() { return <ProtectedRoute allow="trainer" />; }
-function AdminGuard()   { return <ProtectedRoute allow="admin" />;   }
+// كل guard ملفوف بـ RouteErrorBoundary ليحصر أي خطأ داخل هذا الـ role فقط.
+function TraineeGuard() {
+  return <RouteErrorBoundary scope="trainee"><ProtectedRoute allow="trainee" /></RouteErrorBoundary>;
+}
+function TrainerGuard() {
+  return <RouteErrorBoundary scope="trainer"><ProtectedRoute allow="trainer" /></RouteErrorBoundary>;
+}
+function AdminGuard() {
+  return <RouteErrorBoundary scope="admin"><ProtectedRoute allow="admin" /></RouteErrorBoundary>;
+}
 
 // Layouts (eager — shared chrome loaded once)
 import TraineeLayout from './layouts/TraineeLayout';
