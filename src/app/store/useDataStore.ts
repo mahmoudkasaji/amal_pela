@@ -14,8 +14,6 @@ import {
   fetchTrainees, fetchTrainers, fetchPackages,
   fetchSessions, fetchBookings, fetchLedger, fetchBranches,
   updateSessionFields,
-} from '../api/entities';
-import {
   rpcBookSession, rpcCancelBooking, rpcMarkAttendance,
   rpcCancelSession, rpcAssignPackage,
   rpcFreezeSubscription, rpcUnfreezeSubscription,
@@ -25,9 +23,9 @@ import {
   rpcAdminUpdateTrainee, rpcAdminUpdateTrainer,
   insertSession, insertPackage,
   updateProfileSelf, updatePackageFields,
-} from '../api/rpc';
-import type { UpdateTraineeInput, UpdateTrainerInput } from '../api/rpc';
-import type { NewTraineeInput, NewTrainerInput, NewSessionInput, NewPackageInput } from '../api/rpc';
+} from '../api';
+import type { UpdateTraineeInput, UpdateTrainerInput } from '../api';
+import type { NewTraineeInput, NewTrainerInput, NewSessionInput, NewPackageInput } from '../api';
 
 // ─── نتائج العمليات ────────────────────────────────────────────────────────
 export interface ActionResult {

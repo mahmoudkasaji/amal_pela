@@ -4,7 +4,7 @@ import {
   fetchClubSettings, updateClubSettings, type ClubSettings,
   fetchBranchesList, insertBranch, deleteBranch, type Branch,
   fetchSessionTypesList, insertSessionType, deleteSessionType, type SessionType,
-} from '../../api/rpc';
+} from '../../api';
 import { inputStyle } from '../../components/ui/utils';
 
 export default function AdminSettings() {

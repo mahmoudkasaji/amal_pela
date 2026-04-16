@@ -3,7 +3,7 @@ import { useDataStore } from '../../store/useDataStore';
 import { Plus, X, Mail, Phone, MapPin, Star, Pause, Play, CheckCircle2 } from 'lucide-react';
 import { today } from '../../lib/date';
 import type { Trainer } from '../../data/types';
-import { fetchBranchesList, type Branch } from '../../api/rpc';
+import { fetchBranchesList, type Branch } from '../../api';
 import { ACCOUNT_STATUS_CONFIG } from '../../data/constants';
 import { inputStyle } from '../../components/ui/utils';
 

@@ -10,7 +10,7 @@
  */
 
 import type { Trainee, Trainer, Package, Session, Booking, LedgerEntry } from '../data/types';
-import { fetchBranches, fetchSessions, fetchBookings, fetchTrainees, fetchPackages, fetchLedger } from '../api/entities';
+import { fetchBranches, fetchSessions, fetchBookings, fetchTrainees, fetchPackages, fetchLedger } from '../api';
 
 /** شكل الحالة التي تقبلها دوال التحميل. */
 export interface LoadableState {

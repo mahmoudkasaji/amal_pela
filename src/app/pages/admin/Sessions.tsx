@@ -3,7 +3,7 @@ import { useDataStore } from '../../store/useDataStore';
 import type { Session } from '../../data/types';
 import { X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { formatShortArabic } from '../../lib/date';
-import { fetchBranchesList, fetchSessionTypesList, type Branch, type SessionType } from '../../api/rpc';
+import { fetchBranchesList, fetchSessionTypesList, type Branch, type SessionType } from '../../api';
 import { SessionsFilters } from './sessions/SessionsFilters';
 import { SessionsList, getStatusStyle } from './sessions/SessionsList';
 import { AddSessionModal } from './sessions/AddSessionModal';

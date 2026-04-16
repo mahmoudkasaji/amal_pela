@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import type { AuthUser } from '../data/types';
 import { supabase } from '../lib/supabase';
-import { resolveLoginEmail } from '../api/rpc';
+import { resolveLoginEmail } from '../api';
 import { useDataStore } from '../store/useDataStore';
 
 interface LoginResult {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useDataStore } from '../../../store/useDataStore';
 import type { Package } from '../../../data/types';
-import { fetchBranchesList, type Branch } from '../../../api/rpc';
+import { fetchBranchesList, type Branch } from '../../../api';
 import { inputStyle } from '../../../components/ui/utils';
 import { today } from '../../../lib/date';
 import { Modal } from './Modal';

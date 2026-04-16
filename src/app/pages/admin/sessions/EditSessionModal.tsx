@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Trainer } from '../../../data/types';
-import type { Branch, SessionType } from '../../../api/rpc';
+import type { Branch, SessionType } from '../../../api';
 import { inputStyle } from '../../../components/ui/utils';
 import { Modal } from './Modal';
 
