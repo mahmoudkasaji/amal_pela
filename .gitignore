@@ -38,6 +38,15 @@ lerna-debug.log*
 # TypeScript
 *.tsbuildinfo
 
+# Vite / tooling
+.vite/
+coverage/
+.eslintcache
+.turbo/
+
+# Vercel
+.vercel
+
 # Supabase local
 supabase/.temp/
 supabase/.branches/

@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.tsx --cache --cache-location .eslintcache",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix --cache --cache-location .eslintcache",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,md,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css,md,json}\""
   },
   "dependencies": {
     "@radix-ui/react-accordion": "1.2.3",
@@ -65,10 +69,17 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@eslint/js": "^9.13.0",
     "@tailwindcss/vite": "4.1.12",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
+    "@typescript-eslint/eslint-plugin": "^8.12.0",
+    "@typescript-eslint/parser": "^8.12.0",
     "@vitejs/plugin-react": "4.7.0",
+    "eslint": "^9.13.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.14",
+    "prettier": "^3.3.3",
     "tailwindcss": "4.1.12",
     "typescript": "5.6.3",
     "vite": "6.3.5"
