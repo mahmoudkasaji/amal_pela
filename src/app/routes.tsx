@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { createHashRouter } from 'react-router';
+import { createBrowserRouter } from 'react-router';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -65,7 +65,7 @@ function NotFound() {
   );
 }
 
-export const router = createHashRouter([
+export const router = createBrowserRouter([
   {
     path: '/',
     Component: LandingPage,
