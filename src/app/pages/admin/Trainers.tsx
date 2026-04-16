@@ -4,6 +4,7 @@ import { Plus, X, Mail, Phone, MapPin, Star, Pause, Play, CheckCircle2 } from 'l
 import { today } from '../../lib/date';
 import type { Trainer } from '../../data/types';
 import { fetchBranchesList, type Branch } from '../../api/rpc';
+import { ACCOUNT_STATUS_CONFIG } from '../../data/constants';
 import { inputStyle } from '../../components/ui/utils';
 
 type EditDraft = Pick<Trainer, 'name' | 'specialty' | 'email' | 'phone' | 'branch'>;
@@ -112,17 +113,22 @@ export default function AdminTrainers() {
                         <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', marginTop: '2px' }}>{trainer.specialty}</p>
                       </div>
                     </div>
-                    <span
-                      className="px-2.5 py-1 rounded-full"
-                      style={{
-                        fontSize: '0.62rem', fontWeight: 600,
-                        background: trainer.status === 'active' ? 'rgba(255,255,255,0.12)' : 'rgba(239,68,68,0.2)',
-                        color:      trainer.status === 'active' ? 'rgba(255,255,255,0.65)' : '#fca5a5',
-                        border:     '1px solid rgba(255,255,255,0.1)',
-                      }}
-                    >
-                      {trainer.status === 'active' ? 'فعالة' : 'غير فعالة'}
-                    </span>
+                    {(() => {
+                      const cfg = ACCOUNT_STATUS_CONFIG[trainer.status];
+                      return (
+                        <span
+                          className="px-2.5 py-1 rounded-full"
+                          style={{
+                            fontSize: '0.62rem', fontWeight: 600,
+                            background: 'rgba(255,255,255,0.12)',
+                            color: cfg.color,
+                            border: '1px solid rgba(255,255,255,0.1)',
+                          }}
+                        >
+                          {cfg.label}
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   {/* Stats */}

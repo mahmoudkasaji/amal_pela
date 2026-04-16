@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useDataStore } from '../../store/useDataStore';
 import { Search, User, CalendarDays, CheckCircle2, MapPin } from 'lucide-react';
 import { today } from '../../lib/date';
-import { LEVEL_MAP, LEVEL_STYLE } from '../../data/constants';
+import { LEVEL_MAP, LEVEL_STYLE, ACCOUNT_STATUS_CONFIG } from '../../data/constants';
 
 export default function TrainerTraineesList() {
   const { user } = useAuth();
@@ -139,18 +139,23 @@ export default function TrainerTraineesList() {
 
                 {/* Status + toggle */}
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span
-                    className="px-2 py-0.5 rounded-full"
-                    style={{
-                      fontSize: '0.62rem',
-                      fontWeight: 600,
-                      background: trainee.status === 'active' ? '#f0fdf4' : '#f8fafc',
-                      color: trainee.status === 'active' ? '#16a34a' : '#94a3b8',
-                      border: `1px solid ${trainee.status === 'active' ? '#bbf7d0' : '#e2e8f0'}`,
-                    }}
-                  >
-                    {trainee.status === 'active' ? 'فعالة' : 'موقوفة'}
-                  </span>
+                  {(() => {
+                    const cfg = ACCOUNT_STATUS_CONFIG[trainee.status];
+                    return (
+                      <span
+                        className="px-2 py-0.5 rounded-full"
+                        style={{
+                          fontSize: '0.62rem',
+                          fontWeight: 600,
+                          background: cfg.bg,
+                          color: cfg.color,
+                          border: `1px solid ${cfg.border}`,
+                        }}
+                      >
+                        {cfg.label}
+                      </span>
+                    );
+                  })()}
                   <span style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>{isExpanded ? '▲' : '▼'}</span>
                 </div>
               </button>

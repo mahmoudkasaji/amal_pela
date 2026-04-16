@@ -289,7 +289,8 @@ export const useDataStore = create<DataState>()((set, get) => ({
     if (patch.name   !== undefined) profilePatch.name   = patch.name;
     if (patch.phone  !== undefined) profilePatch.phone  = patch.phone;
     if (patch.email  !== undefined) profilePatch.email  = patch.email;
-    if (patch.status !== undefined) profilePatch.status  = patch.status === 'suspended' ? 'suspended' : 'active';
+    // تمرير status كما هي (active | suspended | inactive) — يدعمها enum في DB
+    if (patch.status !== undefined) profilePatch.status  = patch.status;
 
     if (Object.keys(profilePatch).length > 0) {
       const { error } = await supabase.from('profiles').update(profilePatch).eq('id', traineeId);

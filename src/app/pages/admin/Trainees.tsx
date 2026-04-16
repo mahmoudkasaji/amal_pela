@@ -4,7 +4,7 @@ import type { Trainee } from '../../data/types';
 import { Search, Plus, Eye, UserX, X, Pause, Play, Minus, CalendarPlus, Package as PackageIcon, CheckCircle2 } from 'lucide-react';
 import { today, daysBetween } from '../../lib/date';
 import { fetchBranchesList, type Branch } from '../../api/rpc';
-import { LEVEL_MAP, LEVEL_STYLE } from '../../data/constants';
+import { LEVEL_MAP, LEVEL_STYLE, ACCOUNT_STATUS_CONFIG } from '../../data/constants';
 import { inputStyle } from '../../components/ui/utils';
 
 export default function AdminTrainees() {
@@ -19,7 +19,7 @@ export default function AdminTrainees() {
   const adjustBalance       = useDataStore(s => s.adjustBalance);
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended' | 'inactive'>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -84,6 +84,7 @@ export default function AdminTrainees() {
     { key: 'all' as const, label: 'الكل', count: trainees.length },
     { key: 'active' as const, label: 'فعالة', count: trainees.filter(t => t.status === 'active').length },
     { key: 'suspended' as const, label: 'موقوفة', count: trainees.filter(t => t.status === 'suspended').length },
+    { key: 'inactive' as const, label: 'غير نشطة', count: trainees.filter(t => t.status === 'inactive').length },
   ];
 
   return (
@@ -192,14 +193,17 @@ export default function AdminTrainees() {
                       }
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2.5 py-1 rounded-full" style={{
-                        fontSize: '0.65rem', fontWeight: 600,
-                        background: t.status === 'active' ? '#f0fdf4' : '#f8fafc',
-                        color:      t.status === 'active' ? '#16a34a' : '#94a3b8',
-                        border:     `1px solid ${t.status === 'active' ? '#bbf7d0' : '#e2e8f0'}`,
-                      }}>
-                        {t.status === 'active' ? 'فعالة' : 'موقوفة'}
-                      </span>
+                      {(() => {
+                        const cfg = ACCOUNT_STATUS_CONFIG[t.status];
+                        return (
+                          <span className="px-2.5 py-1 rounded-full" style={{
+                            fontSize: '0.65rem', fontWeight: 600,
+                            background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`,
+                          }}>
+                            {cfg.label}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
@@ -236,14 +240,17 @@ export default function AdminTrainees() {
                       <p style={{ fontSize: '0.72rem', color: '#94a3b8' }}>{t.phone}</p>
                     </div>
                   </div>
-                  <span className="px-2.5 py-1 rounded-full" style={{
-                    fontSize: '0.65rem', fontWeight: 600,
-                    background: t.status === 'active' ? '#f0fdf4' : '#f8fafc',
-                    color:      t.status === 'active' ? '#16a34a' : '#94a3b8',
-                    border:     `1px solid ${t.status === 'active' ? '#bbf7d0' : '#e2e8f0'}`,
-                  }}>
-                    {t.status === 'active' ? 'فعالة' : 'موقوفة'}
-                  </span>
+                  {(() => {
+                    const cfg = ACCOUNT_STATUS_CONFIG[t.status];
+                    return (
+                      <span className="px-2.5 py-1 rounded-full" style={{
+                        fontSize: '0.65rem', fontWeight: 600,
+                        background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`,
+                      }}>
+                        {cfg.label}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center justify-between pt-2" style={{ borderTop: '1px solid #f8fafc' }}>
                   <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>{t.subscription?.packageName || 'بدون باقة'}</span>

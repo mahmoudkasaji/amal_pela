@@ -1,5 +1,14 @@
 /** Shared constants — DRY across admin / trainer / trainee pages. */
 
+import type { AccountStatus } from './types';
+
+/** Labels + colors لحالات الحساب (مطابقة لـ enum account_status في DB). */
+export const ACCOUNT_STATUS_CONFIG: Record<AccountStatus, { label: string; bg: string; color: string; border: string }> = {
+  active:    { label: 'نشطة',      bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
+  suspended: { label: 'موقوفة',    bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
+  inactive:  { label: 'غير نشطة', bg: '#f8fafc', color: '#64748b', border: '#e2e8f0' },
+};
+
 export const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
   confirmed:             { label: 'مؤكد',         bg: '#eff6ff', color: '#2563eb' },
   attended:              { label: 'حضر',           bg: '#f0fdf4', color: '#16a34a' },

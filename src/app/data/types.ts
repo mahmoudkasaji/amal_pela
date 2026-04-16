@@ -1,5 +1,13 @@
 export type UserRole = 'admin' | 'trainer' | 'trainee';
 
+/**
+ * حالة الحساب — تطابق enum `account_status` في قاعدة البيانات.
+ * - active: نشط
+ * - suspended: موقوف (تم إيقافه من الإدارة)
+ * - inactive: غير نشط (حسابه موجود لكن لم يعد مستخدماً)
+ */
+export type AccountStatus = 'active' | 'suspended' | 'inactive';
+
 export interface AuthUser {
   id: string;
   name: string;
@@ -19,7 +27,7 @@ export interface Trainee {
   birthDate: string;
   branch: string;
   level: 'beginner' | 'intermediate' | 'advanced';
-  status: 'active' | 'suspended';
+  status: AccountStatus;
   notes: string;
   joinDate: string;
   subscription?: Subscription;
@@ -34,7 +42,7 @@ export interface Trainer {
   phone: string;
   specialty: string;
   branch: string;
-  status: 'active' | 'inactive';
+  status: AccountStatus;
   joinDate: string;
 }
 

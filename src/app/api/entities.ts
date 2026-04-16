@@ -106,7 +106,8 @@ function mapTrainee(row: DbTraineeView, branchName: string | null): Trainee {
     birthDate: row.birth_date ?? '',
     branch: branchName ?? '',
     level: row.level,
-    status: row.account_status === 'inactive' ? 'suspended' : row.account_status,
+    // تمرير الحالة كما هي من DB (active | suspended | inactive) — لا تحويل
+    status: row.account_status,
     notes: row.notes ?? '',
     joinDate: row.join_date,
     subscription: sub,
@@ -187,7 +188,9 @@ function mapTrainer(row: DbTrainer, branchName: string | null): Trainer {
     phone: row.phone ?? '',
     specialty: row.specialty ?? '',
     branch: branchName ?? '',
-    status: row.status === 'inactive' ? 'inactive' : 'active',
+    // تمرير الحالة كما هي من DB (active | suspended | inactive) — لا تحويل
+    // سابقاً: suspended كانت تظهر كـ active — bug تم إصلاحه في Phase 2
+    status: row.status,
     joinDate: row.join_date,
   };
 }
