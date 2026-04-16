@@ -1,0 +1,62 @@
+import { LayoutDashboard, Dumbbell, Sparkles } from 'lucide-react';
+
+// ─── Role Definitions ───────────────────────────────────────────────────────
+export const ROLES = [
+  {
+    key: 'admin',
+    label: 'مدير',
+    icon: LayoutDashboard,
+    image: 'https://images.unsplash.com/photo-1761971975724-31001b4de0bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1200',
+    overlay: 'rgba(15, 23, 42, 0.72)',
+    accent: '#64748b',
+    accentLight: '#f1f5f9',
+    accentText: '#475569',
+    badge: 'لوحة الإدارة',
+    headline: 'مرحباً بك في\nمركز القيادة',
+    sub: 'إدارة المركز، المدربات، والمتدربات من مكان واحد بكفاءة تامة.',
+    tag: 'Admin Dashboard',
+    cardBorder: '#e2e8f0',
+    btnBg: '#0f172a',
+    btnHover: '#1e293b',
+    inputFocus: '#94a3b8',
+  },
+  {
+    key: 'trainer',
+    label: 'مدربة',
+    icon: Dumbbell,
+    image: 'https://images.unsplash.com/photo-1756367201409-8a05f0d9aed4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1200',
+    overlay: 'rgba(15, 30, 25, 0.65)',
+    accent: '#6b7e74',
+    accentLight: '#f0f4f2',
+    accentText: '#4a6358',
+    badge: 'واجهة المدربة',
+    headline: 'أهلاً بكِ\nمدربتنا المتميزة',
+    sub: 'تابعي جلساتك، متدرباتك وجدولك اليومي بكل سهولة ويسر.',
+    tag: 'Trainer Portal',
+    cardBorder: '#e2e8e4',
+    btnBg: '#2d4a3e',
+    btnHover: '#3a5f51',
+    inputFocus: '#8aad9e',
+  },
+  {
+    key: 'trainee',
+    label: 'متدربة',
+    icon: Sparkles,
+    image: 'https://images.unsplash.com/photo-1676496962536-d8ef110ff6f0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1200',
+    overlay: 'rgba(30, 20, 35, 0.60)',
+    accent: '#8b7e9e',
+    accentLight: '#f4f2f7',
+    accentText: '#6b5f7e',
+    badge: 'بوابة المتدربة',
+    headline: 'رحلتك نحو\nالتوازن تبدأ هنا',
+    sub: 'احجزي جلساتك، تابعي تقدمك واستمتعي بتجربتك في استوديو سيرين.',
+    tag: 'Trainee Space',
+    cardBorder: '#e8e4ed',
+    btnBg: '#4a3d5e',
+    btnHover: '#5c4d72',
+    inputFocus: '#b0a0c8',
+  },
+] as const;
+
+export type Role = typeof ROLES[number];
+export type RoleKey = typeof ROLES[number]['key'];
