@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useDataStore } from '../../../store/useDataStore';
 import type { Package } from '../../../data/types';
-import { fetchBranchesList, type Branch } from '../../../api';
 import { inputStyle } from '../../../components/ui/utils';
 import { today } from '../../../lib/date';
 import { Modal } from './Modal';
@@ -34,15 +33,11 @@ export function AddTraineeModal({ open, onClose, onFlash, packages }: Props) {
   const createTrainee    = useDataStore(s => s.createTrainee);
   const assignPackageRpc = useDataStore(s => s.assignPackage);
 
-  const [addDraft, setAddDraft]   = useState<AddDraft>(INITIAL_DRAFT);
-  const [branches, setBranches]   = useState<Branch[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Phase D: branches من الـ store بدل fetch مستقل
+  const branches = useDataStore(s => s.branches);
 
-  useEffect(() => {
-    if (open && branches.length === 0) {
-      fetchBranchesList().then(setBranches);
-    }
-  }, [open, branches.length]);
+  const [addDraft, setAddDraft]   = useState<AddDraft>(INITIAL_DRAFT);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!open) return null;
 

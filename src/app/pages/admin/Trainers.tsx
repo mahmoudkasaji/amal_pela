@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useDataStore } from '../../store/useDataStore';
 import { Plus, X, Mail, Phone, MapPin, Star, Pause, Play, CheckCircle2 } from 'lucide-react';
 import { today } from '../../lib/date';
 import type { Trainer } from '../../data/types';
-import { fetchBranchesList, type Branch } from '../../api';
 import { ACCOUNT_STATUS_CONFIG } from '../../data/constants';
 import { inputStyle } from '../../components/ui/utils';
 
@@ -24,9 +23,9 @@ export default function AdminTrainers() {
     name: '', specialty: '', phone: '', username: '',
     password: 'pass1234', email: '', branch_id: '',
   });
-  const [branches, setBranches] = useState<Branch[]>([]);
+  // Phase D: branches من الـ store بدل fetch مستقل
+  const branches = useDataStore(s => s.branches);
   const [editingId, setEditingId] = useState<string | null>(null);
-  useEffect(() => { if ((showAdd || editingId) && branches.length === 0) fetchBranchesList().then(setBranches); }, [showAdd, editingId, branches.length]);
   const [draft, setDraft] = useState<EditDraft>({
     name: '', specialty: '', email: '', phone: '', branch: '',
   });

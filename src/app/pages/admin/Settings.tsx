@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { Flower2, Save, CheckCircle2, MapPin, Bell, AlertCircle, X, Plus, Trash2 } from 'lucide-react';
 import {
   fetchClubSettings, updateClubSettings, type ClubSettings,
-  fetchBranchesList, insertBranch, deleteBranch, type Branch,
-  fetchSessionTypesList, insertSessionType, deleteSessionType, type SessionType,
+  insertBranch, deleteBranch,
+  insertSessionType, deleteSessionType,
 } from '../../api';
+import { useDataStore } from '../../store/useDataStore';
 import { inputStyle } from '../../components/ui/utils';
 
 export default function AdminSettings() {
@@ -14,10 +15,13 @@ export default function AdminSettings() {
   });
   const [loading, setLoading] = useState(true);
 
-  const [branches, setBranches] = useState<Branch[]>([]);
-  const [newBranchName, setNewBranchName] = useState('');
+  // Phase D: branches + sessionTypes من store (محمّلتان مركزياً)
+  const branches = useDataStore(s => s.branches);
+  const sessionTypes = useDataStore(s => s.sessionTypes);
+  const refreshBranches = useDataStore(s => s.refreshBranches);
+  const refreshSessionTypes = useDataStore(s => s.refreshSessionTypes);
 
-  const [sessionTypes, setSessionTypes] = useState<SessionType[]>([]);
+  const [newBranchName, setNewBranchName] = useState('');
   const [newTypeName, setNewTypeName] = useState('');
 
   const [notifs, setNotifs] = useState<boolean[]>([true, true, false, true, true]);
@@ -28,20 +32,12 @@ export default function AdminSettings() {
     setTimeout(() => setToast(null), 2000);
   }
 
-  async function reloadAll() {
-    const [s, b, t] = await Promise.all([
-      fetchClubSettings(),
-      fetchBranchesList(),
-      fetchSessionTypesList(),
-    ]);
-    if (s) setSettings(s);
-    setBranches(b);
-    setSessionTypes(t);
-  }
-
   useEffect(() => {
     setLoading(true);
-    reloadAll().finally(() => setLoading(false));
+    // club_settings تبقى مستقلة (لا تُحمَّل في store). branches/sessionTypes من store.
+    fetchClubSettings()
+      .then((s) => { if (s) setSettings(s); })
+      .finally(() => setLoading(false));
   }, []);
 
   async function saveClubInfo() {
@@ -68,7 +64,7 @@ export default function AdminSettings() {
     const r = await insertBranch(name);
     if (!r.ok) { flash(r.reason ?? 'تعذّر الإضافة'); return; }
     setNewBranchName('');
-    await reloadAll();
+    await refreshBranches();
     flash('تم إضافة الفرع');
   }
 
@@ -76,7 +72,7 @@ export default function AdminSettings() {
     if (!window.confirm('هل أنت متأكد من الحذف؟')) return;
     const r = await deleteBranch(id);
     if (!r.ok) { flash(r.reason ?? 'تعذّر الحذف (قد يكون مربوطاً بجلسات)'); return; }
-    await reloadAll();
+    await refreshBranches();
     flash('تم حذف الفرع');
   }
 
@@ -86,7 +82,7 @@ export default function AdminSettings() {
     const r = await insertSessionType(name);
     if (!r.ok) { flash(r.reason ?? 'تعذّر الإضافة'); return; }
     setNewTypeName('');
-    await reloadAll();
+    await refreshSessionTypes();
     flash('تم إضافة النوع');
   }
 
@@ -94,7 +90,7 @@ export default function AdminSettings() {
     if (!window.confirm('هل أنت متأكد من الحذف؟')) return;
     const r = await deleteSessionType(id);
     if (!r.ok) { flash(r.reason ?? 'تعذّر الحذف'); return; }
-    await reloadAll();
+    await refreshSessionTypes();
     flash('تم حذف النوع');
   }
 

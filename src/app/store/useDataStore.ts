@@ -12,7 +12,9 @@ import { create } from 'zustand';
 import type { Trainee, Trainer, Package, Session, Booking, LedgerEntry, UserRole } from '../data/types';
 import {
   fetchTrainees, fetchTrainers, fetchPackages,
-  fetchSessions, fetchBookings, fetchLedger, fetchBranches,
+  fetchSessions, fetchBookings, fetchLedger,
+  fetchBranches, // Map<id,name> used in refresh() for trainee/trainer mappers
+  fetchBranchesList, fetchSessionTypesList,
   updateSessionFields,
   rpcBookSession, rpcCancelBooking, rpcMarkAttendance,
   rpcCancelSession, rpcAssignPackage,
@@ -24,7 +26,7 @@ import {
   insertSession, insertPackage,
   updateProfileSelf, updatePackageFields,
 } from '../api';
-import type { UpdateTraineeInput, UpdateTrainerInput } from '../api';
+import type { Branch, SessionType, UpdateTraineeInput, UpdateTrainerInput } from '../api';
 import type { NewTraineeInput, NewTrainerInput, NewSessionInput, NewPackageInput } from '../api';
 
 // ─── نتائج العمليات ────────────────────────────────────────────────────────
@@ -52,6 +54,9 @@ interface DataState {
   sessions: Session[];
   bookings: Booking[];
   ledger:   LedgerEntry[];
+  /** بيانات مرجعية مشتركة (Phase D): تُحمّل مرة واحدة وتُقرأ من الصفحات */
+  branches: Branch[];
+  sessionTypes: SessionType[];
 
   // ─── lifecycle ─────
   /**
@@ -71,6 +76,8 @@ interface DataState {
   refreshTrainers: () => Promise<void>;
   refreshPackages: () => Promise<void>;
   refreshLedger:   () => Promise<void>;
+  refreshBranches:     () => Promise<void>;
+  refreshSessionTypes: () => Promise<void>;
 
   // ─── عمليات المتدربة ─────
   bookSession:    (traineeId: string, sessionId: string) => Promise<BookResult>;
@@ -121,6 +128,8 @@ export const useDataStore = create<DataState>()((set, get) => ({
   sessions: [],
   bookings: [],
   ledger:   [],
+  branches:     [],
+  sessionTypes: [],
 
   // ════════════════════════════════════════════════════════════════════════
   // Lifecycle
@@ -156,12 +165,23 @@ export const useDataStore = create<DataState>()((set, get) => ({
   },
 
   refresh: async () => {
-    // fetch branches once and share with trainees & trainers to avoid N+1
-    const branches = await fetchBranches();
+    // Phase D: fetch branches + session_types once as reference data,
+    // pass branches map to trainee/trainer fetchers to avoid N+1
+    const refResults = await Promise.allSettled([
+      fetchBranches(),      // Map<id, name> for mappers
+      fetchBranchesList(),  // Full Branch[] for UI
+      fetchSessionTypesList(),
+    ]);
+    const branchesMap = refResults[0].status === 'fulfilled' ? refResults[0].value : new Map<string, string>();
+    if (refResults[0].status === 'rejected') console.error('[refresh branches map]', refResults[0].reason);
+    const branchesList = refResults[1].status === 'fulfilled' ? refResults[1].value : [];
+    if (refResults[1].status === 'rejected') console.error('[refresh branches list]', refResults[1].reason);
+    const sessionTypesList = refResults[2].status === 'fulfilled' ? refResults[2].value : [];
+    if (refResults[2].status === 'rejected') console.error('[refresh session_types]', refResults[2].reason);
 
     const results = await Promise.allSettled([
-      fetchTrainees(branches),
-      fetchTrainers(branches),
+      fetchTrainees(branchesMap),
+      fetchTrainers(branchesMap),
       fetchPackages(),
       fetchSessions(),
       fetchBookings(),
@@ -169,7 +189,10 @@ export const useDataStore = create<DataState>()((set, get) => ({
     ]);
 
     const keys = ['trainees', 'trainers', 'packages', 'sessions', 'bookings', 'ledger'] as const;
-    const patch: Record<string, unknown> = {};
+    const patch: Record<string, unknown> = {
+      branches: branchesList,
+      sessionTypes: sessionTypesList,
+    };
 
     results.forEach((r, i) => {
       if (r.status === 'fulfilled') {
@@ -179,9 +202,7 @@ export const useDataStore = create<DataState>()((set, get) => ({
       }
     });
 
-    if (Object.keys(patch).length > 0) {
-      set(patch as Partial<DataState>);
-    }
+    set(patch as Partial<DataState>);
   },
 
   reset: () => {
@@ -195,6 +216,8 @@ export const useDataStore = create<DataState>()((set, get) => ({
       sessions: [],
       bookings: [],
       ledger: [],
+      branches: [],
+      sessionTypes: [],
     });
   },
 
@@ -224,6 +247,14 @@ export const useDataStore = create<DataState>()((set, get) => ({
   refreshLedger: async () => {
     try { const ledger = await fetchLedger(); set({ ledger }); }
     catch (e) { console.error('[refreshLedger]', e); }
+  },
+  refreshBranches: async () => {
+    try { const branches = await fetchBranchesList(); set({ branches }); }
+    catch (e) { console.error('[refreshBranches]', e); }
+  },
+  refreshSessionTypes: async () => {
+    try { const sessionTypes = await fetchSessionTypesList(); set({ sessionTypes }); }
+    catch (e) { console.error('[refreshSessionTypes]', e); }
   },
 
   // ════════════════════════════════════════════════════════════════════════
@@ -326,13 +357,11 @@ export const useDataStore = create<DataState>()((set, get) => ({
 
   updateTrainee: async (traineeId, patch) => {
     // اسم الفرع من UI يجب تحويله إلى branch_id
+    // Phase D: استخدم branches المحفوظة في store بدل fetchBranches() جديد
     let branchId: string | undefined;
     if (patch.branch !== undefined) {
-      const branches = await fetchBranches();
-      // reverse lookup: name → id
-      for (const [id, name] of branches.entries()) {
-        if (name === patch.branch) { branchId = id; break; }
-      }
+      const match = get().branches.find(b => b.name === patch.branch);
+      branchId = match?.id;
     }
 
     const rpcPatch: UpdateTraineeInput = {
@@ -355,13 +384,11 @@ export const useDataStore = create<DataState>()((set, get) => ({
   },
 
   updateTrainer: async (trainerId, patch) => {
-    // اسم الفرع من UI يجب تحويله إلى branch_id
+    // Phase D: branches من store
     let branchId: string | undefined;
     if (patch.branch !== undefined) {
-      const branches = await fetchBranches();
-      for (const [id, name] of branches.entries()) {
-        if (name === patch.branch) { branchId = id; break; }
-      }
+      const match = get().branches.find(b => b.name === patch.branch);
+      branchId = match?.id;
     }
 
     const rpcPatch: UpdateTrainerInput = {

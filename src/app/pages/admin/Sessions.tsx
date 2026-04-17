@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useDataStore } from '../../store/useDataStore';
 import type { Session } from '../../data/types';
 import { X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { formatShortArabic } from '../../lib/date';
-import { fetchBranchesList, fetchSessionTypesList, type Branch, type SessionType } from '../../api';
 import { SessionsFilters } from './sessions/SessionsFilters';
 import { SessionsList, getStatusStyle } from './sessions/SessionsList';
 import { AddSessionModal } from './sessions/AddSessionModal';
@@ -24,8 +23,9 @@ export default function AdminSessions() {
   const { search, setSearch, trainerFilter, setTrainerFilter, filtered } = useSessionFilters(allSessions);
 
   const [showAdd, setShowAdd] = useState(false);
-  const [branches, setBranches] = useState<Branch[]>([]);
-  const [sessionTypes, setSessionTypes] = useState<SessionType[]>([]);
+  // Phase D: branches + sessionTypes من الـ store (محمّلة مرة واحدة عند التهيئة)
+  const branches = useDataStore(s => s.branches);
+  const sessionTypes = useDataStore(s => s.sessionTypes);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -34,13 +34,6 @@ export default function AdminSessions() {
   const [showEdit, setShowEdit] = useState(false);
   const [editInitialDraft, setEditInitialDraft] = useState<EditDraft | null>(null);
   const [editSessionId, setEditSessionId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (showAdd || showEdit) {
-      if (branches.length === 0)     fetchBranchesList().then(setBranches);
-      if (sessionTypes.length === 0) fetchSessionTypesList().then(setSessionTypes);
-    }
-  }, [showAdd, showEdit, branches.length, sessionTypes.length]);
 
   if (!initialized) return (
     <div className="flex items-center justify-center h-64">
@@ -153,9 +146,7 @@ export default function AdminSessions() {
                       notes: selected.notes,
                     });
                     setEditSessionId(selected.id);
-                    // fetch branches/types if needed
-                    if (branches.length === 0) fetchBranchesList().then(setBranches);
-                    if (sessionTypes.length === 0) fetchSessionTypesList().then(setSessionTypes);
+                    // branches/sessionTypes متوفران من الـ store بالفعل
                     setSelectedId(null);
                     setShowEdit(true);
                   }}
