@@ -10,13 +10,94 @@
     <link rel="preload" as="image" href="/images/landing/hero.jpg" fetchpriority="high" />
 
     <style>
-      html, body { height: 100%; margin: 0; }
+      html, body { height: 100%; margin: 0; font-family: 'IBM Plex Sans Arabic', 'Cairo', -apple-system, sans-serif; }
       #root { height: 100%; }
+
+      /* Boot-time UI (shown until React mounts) */
+      #boot-fallback {
+        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+        background: #f7f8fa; z-index: 9999; padding: 1.5rem; box-sizing: border-box;
+      }
+      #boot-fallback .box { max-width: 480px; text-align: center; }
+      #boot-fallback h1 { font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0 0 0.5rem; }
+      #boot-fallback p  { font-size: 0.9rem; color: #64748b; margin: 0 0 1rem; line-height: 1.7; }
+      #boot-fallback .spinner {
+        width: 38px; height: 38px; border-radius: 50%;
+        border: 4px solid #e2e8f0; border-top-color: #0f172a;
+        margin: 0 auto 1rem; animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      #boot-fallback .err { text-align: right; }
+      #boot-fallback .err pre {
+        font-size: 0.75rem; background: #fef2f2; color: #991b1b;
+        padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #fecaca;
+        overflow-x: auto; direction: ltr; text-align: left; white-space: pre-wrap;
+      }
+      #boot-fallback .btn {
+        display: inline-block; padding: 0.55rem 1.2rem; font-size: 0.85rem;
+        background: #0f172a; color: white; border: none; border-radius: 0.5rem;
+        cursor: pointer; font-weight: 600; text-decoration: none; margin-top: 0.5rem;
+      }
+      #boot-fallback .btn:hover { background: #1e293b; }
     </style>
   </head>
 
   <body>
-    <div id="root"></div>
+    <!-- React يستبدل محتوى #root عند التحميل.
+         إذا لم يحدث ذلك خلال 15 ثانية، الـ script أسفل يُظهر رسالة خطأ واضحة. -->
+    <div id="root">
+      <div id="boot-fallback">
+        <div class="box" id="boot-loading">
+          <div class="spinner"></div>
+          <h1>جاري تحميل التطبيق...</h1>
+          <p>إذا استمر التحميل أكثر من اللازم، راجع الاتصال بالإنترنت وأعد تحميل الصفحة.</p>
+        </div>
+        <div class="box err" id="boot-error" hidden>
+          <h1>⚠ تعذّر تحميل التطبيق</h1>
+          <p id="boot-error-msg">حدث خطأ غير متوقع أثناء بدء التطبيق.</p>
+          <pre id="boot-error-detail"></pre>
+          <button class="btn" onclick="window.location.reload()">إعادة تحميل الصفحة</button>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="/src/main.tsx"></script>
+
+    <script>
+      // Boot watchdog: if React didn't mount within 15 s, show an error.
+      (function () {
+        var TIMEOUT_MS = 15000;
+        window.addEventListener('error', function (ev) {
+          showBootError('خطأ في تحميل السكربت: ' + (ev.message || 'غير معروف'),
+                        (ev.error && ev.error.stack) || ev.filename + ':' + ev.lineno);
+        });
+        window.addEventListener('unhandledrejection', function (ev) {
+          var reason = ev.reason;
+          var msg = reason && reason.message ? reason.message : String(reason);
+          var stack = reason && reason.stack ? reason.stack : '';
+          showBootError('رفض غير معالج: ' + msg, stack);
+        });
+        setTimeout(function () {
+          if (!window.__APP_MOUNTED__) {
+            showBootError(
+              'التطبيق لم يُحمَّل خلال 15 ثانية.',
+              'الأسباب المحتملة:\n- متغيرات البيئة (Environment Variables) مفقودة على Vercel\n- فشل تحميل ملف JavaScript\n- خطأ شبكة'
+            );
+          }
+        }, TIMEOUT_MS);
+        function showBootError(msg, detail) {
+          var fb = document.getElementById('boot-fallback');
+          var ld = document.getElementById('boot-loading');
+          var er = document.getElementById('boot-error');
+          var mm = document.getElementById('boot-error-msg');
+          var dd = document.getElementById('boot-error-detail');
+          if (!fb || !er || !mm) return;
+          if (ld) ld.setAttribute('hidden', '');
+          er.removeAttribute('hidden');
+          mm.textContent = msg || 'خطأ غير معروف';
+          if (dd && detail) dd.textContent = detail;
+        }
+      })();
+    </script>
   </body>
 </html>

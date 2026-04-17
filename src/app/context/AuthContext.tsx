@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { AuthUser } from '../data/types';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { resolveLoginEmail } from '../api';
 import { useDataStore } from '../store/useDataStore';
 
@@ -52,6 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Phase I1.5: حماية احتياطية — إذا Supabase غير مُكوَّن (شذوذ: App.tsx
+    // يجب أن يعرض <ConfigError /> أولاً)، نتوقف فوراً بدل استدعاء noop client.
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      setAuthError('إعدادات Supabase مفقودة. راجع Vercel Environment Variables.');
+      return;
+    }
+
     // نعتمد كلياً على onAuthStateChange:
     // - INITIAL_SESSION: يُطلق عند mount ويُسلّم الجلسة المُخزّنة (إن وُجدت) أو null
     // - SIGNED_IN: يُطلق عند تسجيل دخول جديد (أو تبديل حساب بين tabs)
