@@ -69,17 +69,38 @@ export interface NewPackageInput {
 }
 
 export async function insertPackage(input: NewPackageInput): Promise<RpcResult> {
-  const { error } = await supabase.from('packages').insert({
-    ...input,
-    is_active: true,
+  const { error } = await supabase.rpc('admin_insert_package', {
+    p_name:               input.name,
+    p_description:        input.description,
+    p_sessions:           input.sessions,
+    p_duration_days:      input.duration_days,
+    p_price:              input.price,
+    p_cancellation_hours: input.cancellation_hours,
+    p_daily_limit:        input.daily_limit,
+    p_session_types:      input.session_types,
+    p_level:              input.level,
+    p_renewable:          input.renewable,
   });
   if (error) return { ok: false, reason: translateError(error.message) };
   return { ok: true };
 }
 
-// ─── Update ───────────────────────────────────────────────────────────────
+// ─── Update via admin_update_package RPC ─────────────────────────────────
 export async function updatePackageFields(packageId: string, patch: Record<string, unknown>): Promise<RpcResult> {
-  const { error } = await supabase.from('packages').update(patch).eq('id', packageId);
+  const { error } = await supabase.rpc('admin_update_package', {
+    p_package_id:         packageId,
+    p_name:               (patch.name               as string | undefined) ?? null,
+    p_description:        (patch.description        as string | undefined) ?? null,
+    p_sessions:           (patch.sessions           as number | undefined) ?? null,
+    p_duration_days:      (patch.duration_days      as number | undefined) ?? null,
+    p_price:              (patch.price              as number | undefined) ?? null,
+    p_cancellation_hours: (patch.cancellation_hours as number | undefined) ?? null,
+    p_daily_limit:        (patch.daily_limit        as number | undefined) ?? null,
+    p_session_types:      (patch.session_types      as string[] | undefined) ?? null,
+    p_level:              (patch.level              as string | undefined) ?? null,
+    p_renewable:          (patch.renewable          as boolean | undefined) ?? null,
+    p_is_active:          (patch.is_active          as boolean | undefined) ?? null,
+  });
   if (error) return { ok: false, reason: translateError(error.message) };
   return { ok: true };
 }

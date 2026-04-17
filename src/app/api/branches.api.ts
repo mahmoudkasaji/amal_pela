@@ -24,17 +24,17 @@ export async function fetchBranchesList(): Promise<Branch[]> {
 }
 
 export async function insertBranch(name: string, address?: string, phone?: string): Promise<RpcResult> {
-  const { error } = await supabase.from('branches').insert({
-    name,
-    address: address ?? null,
-    phone: phone ?? null,
+  const { error } = await supabase.rpc('admin_insert_branch', {
+    p_name:    name,
+    p_address: address ?? null,
+    p_phone:   phone ?? null,
   });
   if (error) return { ok: false, reason: translateError(error.message) };
   return { ok: true };
 }
 
 export async function deleteBranch(id: string): Promise<RpcResult> {
-  const { error } = await supabase.from('branches').delete().eq('id', id);
+  const { error } = await supabase.rpc('admin_delete_branch', { p_branch_id: id });
   if (error) return { ok: false, reason: translateError(error.message) };
   return { ok: true };
 }

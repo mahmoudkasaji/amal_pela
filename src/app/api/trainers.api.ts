@@ -128,12 +128,17 @@ export async function rpcToggleTrainerStatus(trainerId: string): Promise<RpcResu
   return { ok: true };
 }
 
-// ─── Trainer profile direct update (specialty/branch_id) ──────────────────
+// ─── Trainer self-profile update (specialty/branch) via RPC ───────────────
+// trainerId parameter ignored — the RPC uses auth.uid() for security.
+// Kept for API compatibility with existing call sites.
 export async function updateTrainerProfile(
-  trainerId: string,
+  _trainerId: string,
   patch: { specialty?: string; branch_id?: string | null },
 ): Promise<RpcResult> {
-  const { error } = await supabase.from('trainers').update(patch).eq('id', trainerId);
+  const { error } = await supabase.rpc('update_trainer_profile_self', {
+    p_specialty: patch.specialty ?? null,
+    p_branch_id: patch.branch_id ?? null,
+  });
   if (error) return { ok: false, reason: translateError(error.message) };
   return { ok: true };
 }

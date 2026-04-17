@@ -175,17 +175,19 @@ export async function rpcAdjustBalance(traineeId: string, delta: number, reason:
 }
 
 // ─── Self profile update (used by any authenticated user) ─────────────────
+// عبر RPC update_profile_self — لا كتابة مباشرة على profiles من الواجهة
 export async function updateProfileSelf(patch: {
   name?: string;
   phone?: string;
   email?: string;
   prefs?: Record<string, unknown>;
 }): Promise<RpcResult> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, reason: 'غير مسجّل دخول' };
-  const { error } = await supabase.from('profiles').update(patch).eq('id', user.id);
+  const { error } = await supabase.rpc('update_profile_self', {
+    p_name:  patch.name  ?? null,
+    p_phone: patch.phone ?? null,
+    p_email: patch.email ?? null,
+    p_prefs: patch.prefs ?? null,
+  });
   if (error) return { ok: false, reason: translateError(error.message) };
   return { ok: true };
 }

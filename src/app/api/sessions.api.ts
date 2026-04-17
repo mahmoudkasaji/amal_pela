@@ -59,7 +59,7 @@ export async function rpcCancelSession(sessionId: string): Promise<RpcResult> {
   return { ok: true };
 }
 
-// ─── Insert (admin) ───────────────────────────────────────────────────────
+// ─── Insert (admin) via admin_insert_session RPC ─────────────────────────
 export interface NewSessionInput {
   name: string;
   type: string;
@@ -74,23 +74,23 @@ export interface NewSessionInput {
 }
 
 export async function insertSession(input: NewSessionInput): Promise<RpcResult> {
-  const { error } = await supabase.from('sessions').insert({
-    name: input.name,
-    type: input.type,
-    trainer_id: input.trainer_id,
-    branch_id: input.branch_id,
-    date: input.date,
-    start_time: input.start_time,
-    end_time: input.end_time,
-    capacity: input.capacity,
-    level: input.level,
-    notes: input.notes ?? null,
+  const { error } = await supabase.rpc('admin_insert_session', {
+    p_name:       input.name,
+    p_type:       input.type,
+    p_trainer_id: input.trainer_id,
+    p_branch_id:  input.branch_id,
+    p_date:       input.date,
+    p_start_time: input.start_time,
+    p_end_time:   input.end_time,
+    p_capacity:   input.capacity,
+    p_level:      input.level,
+    p_notes:      input.notes ?? null,
   });
   if (error) return { ok: false, reason: translateError(error.message) };
   return { ok: true };
 }
 
-// ─── Update session fields (admin) ────────────────────────────────────────
+// ─── Update session fields (admin) via admin_update_session RPC ──────────
 export async function updateSessionFields(
   id: string,
   fields: Partial<{
@@ -107,6 +107,19 @@ export async function updateSessionFields(
     status: string;
   }>,
 ): Promise<void> {
-  const { error } = await supabase.from('sessions').update(fields).eq('id', id);
+  const { error } = await supabase.rpc('admin_update_session', {
+    p_session_id: id,
+    p_name:       fields.name       ?? null,
+    p_type:       fields.type       ?? null,
+    p_trainer_id: fields.trainer_id ?? null,
+    p_branch_id:  fields.branch_id  ?? null,
+    p_date:       fields.date       ?? null,
+    p_start_time: fields.start_time ?? null,
+    p_end_time:   fields.end_time   ?? null,
+    p_capacity:   fields.capacity   ?? null,
+    p_level:      fields.level      ?? null,
+    p_notes:      fields.notes      ?? null,
+    p_status:     fields.status     ?? null,
+  });
   if (error) throw new Error(error.message);
 }

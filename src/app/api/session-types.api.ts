@@ -15,13 +15,16 @@ export async function fetchSessionTypesList(): Promise<SessionType[]> {
 }
 
 export async function insertSessionType(name: string, icon?: string): Promise<RpcResult> {
-  const { error } = await supabase.from('session_types').insert({ name, icon: icon ?? null });
+  const { error } = await supabase.rpc('admin_insert_session_type', {
+    p_name: name,
+    p_icon: icon ?? null,
+  });
   if (error) return { ok: false, reason: translateError(error.message) };
   return { ok: true };
 }
 
 export async function deleteSessionType(id: string): Promise<RpcResult> {
-  const { error } = await supabase.from('session_types').delete().eq('id', id);
+  const { error } = await supabase.rpc('admin_delete_session_type', { p_type_id: id });
   if (error) return { ok: false, reason: translateError(error.message) };
   return { ok: true };
 }
