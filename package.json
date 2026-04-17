@@ -11,7 +11,9 @@
     "lint": "eslint . --ext .ts,.tsx --cache --cache-location .eslintcache",
     "lint:fix": "eslint . --ext .ts,.tsx --fix --cache --cache-location .eslintcache",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,md,json}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,css,md,json}\""
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css,md,json}\"",
+    "verify-clean": "node scripts/verify-clean.mjs",
+    "clean": "rm -rf node_modules dist .vite .eslintcache .vercel coverage"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "1.2.3",

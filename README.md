@@ -59,6 +59,8 @@ bun run dev
 | `bun run lint:fix` | إصلاح تلقائي لمشاكل ESLint |
 | `bun run format` | تنسيق الكود بـ Prettier |
 | `bun run format:check` | فحص التنسيق فقط |
+| `bun run clean` | حذف `node_modules`, `dist`, وملفات الـ cache |
+| `bun run verify-clean` | التأكد أن المجلد نظيف للتسليم |
 
 ## بنية المشروع
 
@@ -90,6 +92,32 @@ supabase/
 ## التطوير
 
 قواعد المشروع وأنماط التطوير موثّقة في `CLAUDE.md`.
+
+## تسليم نسخة نظيفة
+
+قبل إرسال المشروع لأي طرف خارجي، تأكد أن المجلد المُرسَل لا يحوي artifacts:
+
+```bash
+# 1) امسح كل البناء والتبعيات
+bun run clean
+
+# 2) تحقّق أن المجلد نظيف
+bun run verify-clean   # يجب أن يظهر ✓ Clean
+
+# 3) git status — يجب أن يكون فارغاً (كل الـ artifacts في .gitignore)
+git status
+```
+
+**أفضل ممارسة:** استنسخ دائماً من git بدل نقل المجلد:
+```bash
+git clone https://github.com/mahmoudkasaji/amal_pela.git
+cd amal_pela
+bun install
+bun run build   # يجب أن ينجح مباشرة
+```
+
+GitHub Actions CI يشغّل typecheck + lint + build على كل push لضمان أن
+الـ main branch قابل للبناء دائماً من بيئة نظيفة.
 
 ## الرخصة
 
