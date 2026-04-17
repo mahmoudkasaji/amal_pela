@@ -90,6 +90,9 @@ export interface DataState {
   // ─── عمليات المدربة ─────
   markAttendance: (bookingId: string, state: 'attended' | 'absent' | 'late') => Promise<ActionResult>;
 
+  /** Admin فقط — تغيير حالة حجز إلى أي حالة صالحة (يشمل الرجوع لـ confirmed) */
+  setBookingStatus: (bookingId: string, status: 'confirmed' | 'attended' | 'absent' | 'late') => Promise<ActionResult>;
+
   // ─── عمليات الإدارة ─────
   cancelSession:        (sessionId: string) => Promise<ActionResult>;
   updateSession:        (sessionId: string, fields: Partial<{

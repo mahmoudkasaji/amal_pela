@@ -2,6 +2,16 @@
 
 import type { AccountStatus } from './types';
 
+/**
+ * Currency configuration.
+ * غيّر هذا الملف لتغيير العملة المعروضة في كل التطبيق (Packages, Subscription, Landing).
+ */
+export const CURRENCY = {
+  label: 'دينار',        // الاسم الكامل (يُستخدم بعد الرقم: "50 دينار")
+  shortCode: 'د.أ',      // الرمز المختصر (د.أ = دينار أردني)
+  code: 'JOD',           // ISO 4217 (للمستقبل: تنسيقات البلد أو API)
+} as const;
+
 /** Labels + colors لحالات الحساب (مطابقة لـ enum account_status في DB). */
 export const ACCOUNT_STATUS_CONFIG: Record<AccountStatus, { label: string; bg: string; color: string; border: string }> = {
   active:    { label: 'نشطة',      bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },

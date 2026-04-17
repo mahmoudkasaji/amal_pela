@@ -8,6 +8,8 @@ import { SessionsList, getStatusStyle } from './sessions/SessionsList';
 import { AddSessionModal } from './sessions/AddSessionModal';
 import { EditSessionModal, type EditDraft } from './sessions/EditSessionModal';
 import { useSessionFilters } from './sessions/hooks/useSessionFilters';
+import { usePagination } from '../../lib/usePagination';
+import { PagerBar } from '../../components/ui/PagerBar';
 
 const formatDate = formatShortArabic;
 
@@ -20,7 +22,20 @@ export default function AdminSessions() {
   const createSession = useDataStore(s => s.createSession);
   const updateSession = useDataStore(s => s.updateSession);
 
-  const { search, setSearch, trainerFilter, setTrainerFilter, filtered } = useSessionFilters(allSessions);
+  const {
+    search, setSearch,
+    trainerFilter, setTrainerFilter,
+    typeFilter, setTypeFilter,
+    statusFilter, setStatusFilter,
+    dateFrom, setDateFrom,
+    dateTo, setDateTo,
+    filtered,
+    resetFilters,
+    hasActiveFilters,
+  } = useSessionFilters(allSessions);
+
+  // Phase X4: pagination — 10 per page
+  const { pageItems, page, setPage, totalPages, showingFrom, showingTo, total } = usePagination(filtered, 10);
 
   const [showAdd, setShowAdd] = useState(false);
   // Phase D: branches + sessionTypes من الـ store (محمّلة مرة واحدة عند التهيئة)
@@ -76,13 +91,33 @@ export default function AdminSessions() {
         onSearchChange={setSearch}
         trainerFilter={trainerFilter}
         onTrainerFilterChange={setTrainerFilter}
+        typeFilter={typeFilter}
+        onTypeFilterChange={setTypeFilter}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        dateFrom={dateFrom}
+        onDateFromChange={setDateFrom}
+        dateTo={dateTo}
+        onDateToChange={setDateTo}
+        onResetFilters={resetFilters}
+        hasActiveFilters={hasActiveFilters}
         trainers={trainers}
+        sessionTypes={sessionTypes}
         totalCount={allSessions.length}
         filteredCount={filtered.length}
         onAddClick={() => setShowAdd(true)}
       />
 
-      <SessionsList sessions={filtered} onSelect={setSelectedId} />
+      <SessionsList sessions={pageItems} onSelect={setSelectedId} />
+
+      <PagerBar
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        showingFrom={showingFrom}
+        showingTo={showingTo}
+        total={total}
+      />
 
       {/* Session detail modal */}
       {selected && (

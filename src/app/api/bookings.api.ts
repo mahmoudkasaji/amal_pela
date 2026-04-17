@@ -82,3 +82,16 @@ export async function rpcMarkAttendance(
   if (error) return { ok: false, reason: translateError(error.message) };
   return { ok: true };
 }
+
+// ─── Admin: set booking status (includes reverting to 'confirmed') ────────
+export async function rpcAdminSetBookingStatus(
+  bookingId: string,
+  status: 'confirmed' | 'attended' | 'absent' | 'late',
+): Promise<RpcResult> {
+  const { error } = await supabase.rpc('admin_set_booking_status', {
+    p_booking_id: bookingId,
+    p_status: status,
+  });
+  if (error) return { ok: false, reason: translateError(error.message) };
+  return { ok: true };
+}

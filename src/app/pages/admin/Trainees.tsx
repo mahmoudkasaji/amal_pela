@@ -9,6 +9,8 @@ import { AddTraineeModal } from './trainees/AddTraineeModal';
 import { AssignPackageModal } from './trainees/AssignPackageModal';
 import { TraineeDetailModal } from './trainees/TraineeDetailModal';
 import { useTraineeFilters } from './trainees/hooks/useTraineeFilters';
+import { usePagination } from '../../lib/usePagination';
+import { PagerBar } from '../../components/ui/PagerBar';
 
 export default function AdminTrainees() {
   const initialized         = useDataStore(s => s.initialized);
@@ -22,6 +24,9 @@ export default function AdminTrainees() {
   const [toast, setToast] = useState<string | null>(null);
 
   const { search, setSearch, statusFilter, setStatusFilter, filtered, filterTabs } = useTraineeFilters(trainees);
+
+  // Phase X4: pagination — 10 per page
+  const { pageItems, page, setPage, totalPages, showingFrom, showingTo, total } = usePagination(filtered, 10);
 
   function flash(msg: string) {
     setToast(msg);
@@ -74,13 +79,21 @@ export default function AdminTrainees() {
 
       <div className="px-5 py-4 max-w-5xl mx-auto">
         <TraineesTable
-          trainees={filtered}
+          trainees={pageItems}
           onSelect={t => setSelectedId(t.id)}
           onToggleStatus={toggleStatus}
         />
         <TraineesCards
-          trainees={filtered}
+          trainees={pageItems}
           onSelect={t => setSelectedId(t.id)}
+        />
+        <PagerBar
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          showingFrom={showingFrom}
+          showingTo={showingTo}
+          total={total}
         />
       </div>
 

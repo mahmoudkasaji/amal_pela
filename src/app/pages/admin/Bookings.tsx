@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { useDataStore } from '../../store/useDataStore';
-import { Search, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Search, CheckCircle2, AlertTriangle, Pencil } from 'lucide-react';
 import { STATUS_CONFIG } from '../../data/constants';
+import { EditBookingModal } from './bookings/EditBookingModal';
+import type { Booking } from '../../data/types';
+import { usePagination } from '../../lib/usePagination';
+import { PagerBar } from '../../components/ui/PagerBar';
 
 const STATUS_KEYS: Record<string, string> = {
   'مؤكد':       'confirmed',
@@ -25,6 +29,7 @@ export default function AdminBookings() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('الكل');
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
+  const [editBooking, setEditBooking] = useState<Booking | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   if (!initialized || !fullyLoaded) return (
@@ -53,6 +58,9 @@ export default function AdminBookings() {
     const matchStatus  = statusFilter === 'الكل' || b.status === STATUS_KEYS[statusFilter];
     return matchSearch && matchStatus;
   }).sort((a, b) => b.date.localeCompare(a.date));
+
+  // Phase X4: pagination — 10 per page
+  const { pageItems, page, setPage, totalPages, showingFrom, showingTo, total } = usePagination(filtered, 10);
 
   const counts = {
     total:     bookings.length,
@@ -132,7 +140,7 @@ export default function AdminBookings() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((b, i) => {
+                {pageItems.map((b, i) => {
                   const cfg = STATUS_CONFIG[b.status] || STATUS_CONFIG.confirmed;
                   return (
                     <tr key={b.id} style={{ borderTop: i > 0 ? '1px solid #f8fafc' : 'none' }} className="hover:bg-slate-50/50 transition-colors">
@@ -162,8 +170,8 @@ export default function AdminBookings() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          {/* تغيير حالة الحضور يدوياً — للحالات الاستثنائية */}
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {/* أزرار سريعة للحجوزات المؤكدة */}
                           {b.status === 'confirmed' && (
                             <>
                               <button
@@ -195,7 +203,19 @@ export default function AdminBookings() {
                               </button>
                             </>
                           )}
-                          {b.status !== 'confirmed' && (
+                          {/* زر تعديل الحالة — متاح دائماً إلا للحجوزات الملغاة */}
+                          {b.status !== 'cancelled_with_refund' && b.status !== 'cancelled_no_refund' && (
+                            <button
+                              onClick={() => setEditBooking(b)}
+                              className="px-2 py-1 rounded-md transition-all hover:opacity-90 inline-flex items-center gap-1"
+                              style={{ fontSize: '0.65rem', fontWeight: 600, background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                              title="تعديل حالة الحجز"
+                            >
+                              <Pencil className="w-3 h-3" />
+                              تعديل
+                            </button>
+                          )}
+                          {(b.status === 'cancelled_with_refund' || b.status === 'cancelled_no_refund') && (
                             <span style={{ fontSize: '0.65rem', color: '#cbd5e1' }}>—</span>
                           )}
                         </div>
@@ -210,6 +230,16 @@ export default function AdminBookings() {
             <div className="py-12 text-center">
               <p style={{ fontSize: '0.875rem', color: '#94a3b8' }}>لا توجد نتائج</p>
             </div>
+          )}
+          {filtered.length > 0 && (
+            <PagerBar
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              showingFrom={showingFrom}
+              showingTo={showingTo}
+              total={total}
+            />
           )}
         </div>
       </div>
@@ -256,6 +286,9 @@ export default function AdminBookings() {
           </div>
         </div>
       )}
+
+      {/* ── Edit status modal ── */}
+      <EditBookingModal booking={editBooking} onClose={() => setEditBooking(null)} onFlash={flash} />
 
       {/* ── Toast ── */}
       {toast && (

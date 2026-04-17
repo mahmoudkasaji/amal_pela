@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useDataStore } from '../../store/useDataStore';
 import { Plus, X, Check, Package, Zap, CheckCircle2 } from 'lucide-react';
 import type { Package as PkgType } from '../../data/types';
-import { LEVEL_STYLE } from '../../data/constants';
+import { LEVEL_STYLE, CURRENCY } from '../../data/constants';
 import { inputStyle } from '../../components/ui/utils';
 
 // Packages use plural labels (مبتدئات) vs the singular shared LEVEL_MAP
@@ -120,7 +120,7 @@ export default function AdminPackages() {
                     <span style={{ fontWeight: 800, fontSize: '1.6rem', color: '#ffffff', letterSpacing: '-0.04em' }}>
                       {pkg.price}
                     </span>
-                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginRight: '4px' }}>ريال</span>
+                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginRight: '4px' }}>{CURRENCY.label}</span>
                   </div>
                 </div>
 
@@ -220,7 +220,7 @@ export default function AdminPackages() {
                   <input type="number" min="1" value={addDraft.duration_days} onChange={e => setAddDraft(d => ({ ...d, duration_days: parseInt(e.target.value, 10) || 1 }))} style={inputStyle()} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>السعر (ريال) *</label>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>السعر ({CURRENCY.label}) *</label>
                   <input type="number" min="0" step="0.01" value={addDraft.price} onChange={e => setAddDraft(d => ({ ...d, price: parseFloat(e.target.value) || 0 }))} style={inputStyle()} />
                 </div>
                 <div>
