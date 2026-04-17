@@ -37,6 +37,8 @@ function computeWeekTrend(
 }
 
 export default function AdminReports() {
+  // Phase E: Reports تعتمد على bookings + packages + ledger — نحتاج fullyLoaded
+  const fullyLoaded = useDataStore(s => s.fullyLoaded);
   const trainees = useDataStore(s => s.trainees);
   const trainers = useDataStore(s => s.trainers);
   const sessions = useDataStore(s => s.sessions);
@@ -126,6 +128,18 @@ export default function AdminReports() {
     ]);
     downloadCSV(headers, rows, 'sessions-report.csv');
   }, [sessions]);
+
+  // Phase E: انتظر fullyLoaded قبل عرض التقارير (تعتمد على ledger + bookings + packages)
+  if (!fullyLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#f7f8fa', fontFamily: "'Cairo', sans-serif" }}>
+        <div className="text-center">
+          <div className="w-10 h-10 rounded-full border-4 mx-auto mb-3 animate-spin" style={{ borderColor: '#e2e8f0', borderTopColor: '#0f172a' }} />
+          <p style={{ fontSize: '0.83rem', color: '#94a3b8' }}>جاري تحميل التقارير...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen" style={{ background: '#f7f8fa', fontFamily: "'Cairo', sans-serif" }}>

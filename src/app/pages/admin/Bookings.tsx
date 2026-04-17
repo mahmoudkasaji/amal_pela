@@ -14,7 +14,9 @@ const STATUS_KEYS: Record<string, string> = {
 const FILTER_TABS = ['الكل', 'مؤكد', 'حضر', 'غياب', 'ملغى مسترد', 'إلغاء متأخر'];
 
 export default function AdminBookings() {
+  // Phase E: Bookings تعتمد على bookings — تحمّل في الـ background
   const initialized    = useDataStore(s => s.initialized);
+  const fullyLoaded    = useDataStore(s => s.fullyLoaded);
   const bookings       = useDataStore(s => s.bookings);
   const cancelBooking  = useDataStore(s => s.cancelBooking);
   const markAttendance = useDataStore(s => s.markAttendance);
@@ -25,7 +27,7 @@ export default function AdminBookings() {
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  if (!initialized) return (
+  if (!initialized || !fullyLoaded) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-4 border-gray-200 border-t-gray-600 rounded-full animate-spin" />
     </div>

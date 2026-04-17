@@ -43,7 +43,16 @@ export interface CancelResult extends ActionResult {
 
 // ─── شكل الـ Store ─────────────────────────────────────────────────────────
 interface DataState {
+  /**
+   * Phase E:
+   * - `initialized`: fast path اكتمل — الواجهة الأساسية (Dashboard/Sessions)
+   *   جاهزة للعرض
+   * - `fullyLoaded`: كل البيانات (الثقيلة: ledger + reports) جاهزة
+   * الصفحات الخفيفة تنتظر `initialized` فقط؛ الصفحات الثقيلة تستخدم
+   * `fullyLoaded` لعرض skeletons.
+   */
   initialized: boolean;
+  fullyLoaded: boolean;
   loading:     boolean;
   /** رسالة خطأ عند فشل التهيئة — الواجهة تعرضها مع زر إعادة المحاولة */
   initError:   string | null;
@@ -67,6 +76,8 @@ interface DataState {
    */
   initialize: (role?: UserRole) => Promise<void>;
   refresh:    () => Promise<void>;
+  /** Phase E: يحمّل البيانات الثقيلة في الخلفية (Admin فقط) */
+  loadBackground: () => Promise<void>;
   reset:      () => void;
 
   // ─── partial refresh ─────
@@ -114,11 +125,12 @@ interface DataState {
 }
 
 // Role-based loaders extracted to ./loaders.ts for separation of concerns.
-import { loadForTrainer, loadForTrainee } from './loaders';
+import { loadForTrainer, loadForTrainee, loadAdminFastPath } from './loaders';
 
 // ─── Store Factory ────────────────────────────────────────────────────────
 export const useDataStore = create<DataState>()((set, get) => ({
   initialized: false,
+  fullyLoaded: false,
   loading:     false,
   initError:   null,
 
@@ -136,21 +148,26 @@ export const useDataStore = create<DataState>()((set, get) => ({
   // ════════════════════════════════════════════════════════════════════════
   initialize: async (role) => {
     if (get().initialized) return;
-    set({ loading: true, initError: null });
+    set({ loading: true, initError: null, fullyLoaded: false });
     try {
       // Route to role-specific loader to minimize network round-trips
       if (role === 'trainer') {
         await loadForTrainer(set);
+        // trainer لا يحتاج background — كل بياناته تحمّلت في الـ fast path
+        set({ fullyLoaded: true });
       } else if (role === 'trainee') {
         await loadForTrainee(set);
+        // trainee لا يحتاج background — كل بياناته تحمّلت في الـ fast path
+        set({ fullyLoaded: true });
       } else {
-        // admin (default): full refresh
-        await get().refresh();
+        // Admin: Fast path — branches + session_types + sessions + trainees + trainers
+        // (للـ Dashboard KPIs والـ modals). يكفي للسماح للواجهة بالعرض.
+        await loadAdminFastPath(set);
+        // ثم نشغّل background fetch بدون انتظار — bookings + packages + ledger
+        // يُحمَّلون بالخلفية. الصفحات الثقيلة تنتظر `fullyLoaded`.
+        get().loadBackground().catch((err) => console.error('[background load]', err));
       }
     } catch (err) {
-      // إذا حدث خطأ (لا يُفترض بعد أن يكون كل شيء في allSettled)،
-      // نسجّله لكن **لا نمنع** التطبيق من العمل — نُشير إلى الخطأ لكن
-      // نضبط initialized=true ليتمكن المستخدم من استخدام ما تم تحميله
       console.error('[initialize] unexpected error:', err);
       set({
         initError: err instanceof Error
@@ -159,9 +176,25 @@ export const useDataStore = create<DataState>()((set, get) => ({
       });
     } finally {
       // initialized دائماً true بعد محاولة التهيئة — حتى مع فشل جزئي
-      // لمنع الـ spinner اللانهائي. الأخطاء تُعرض عبر initError.
       set({ initialized: true, loading: false });
     }
+  },
+
+  loadBackground: async () => {
+    const results = await Promise.allSettled([
+      fetchBookings(),
+      fetchPackages(),
+      fetchLedger(),
+    ]);
+    const [rBookings, rPackages, rLedger] = results;
+    const patch: Partial<DataState> = {};
+    if (rBookings.status === 'fulfilled') patch.bookings = rBookings.value;
+    else console.error('[loadBackground bookings]', rBookings.reason);
+    if (rPackages.status === 'fulfilled') patch.packages = rPackages.value;
+    else console.error('[loadBackground packages]', rPackages.reason);
+    if (rLedger.status === 'fulfilled') patch.ledger = rLedger.value;
+    else console.error('[loadBackground ledger]', rLedger.reason);
+    set({ ...patch, fullyLoaded: true });
   },
 
   refresh: async () => {
@@ -208,6 +241,7 @@ export const useDataStore = create<DataState>()((set, get) => ({
   reset: () => {
     set({
       initialized: false,
+      fullyLoaded: false,
       loading: false,
       initError: null,
       trainees: [],

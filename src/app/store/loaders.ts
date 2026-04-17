@@ -19,7 +19,7 @@ import type { Trainee, Trainer, Package, Session, Booking, LedgerEntry } from '.
 import type { Branch, SessionType } from '../api';
 import {
   fetchBranches, fetchBranchesList, fetchSessionTypesList,
-  fetchSessions, fetchBookings, fetchTrainees, fetchPackages, fetchLedger,
+  fetchSessions, fetchBookings, fetchTrainees, fetchTrainers, fetchPackages, fetchLedger,
 } from '../api';
 
 /** شكل الحالة التي تقبلها دوال التحميل. */
@@ -38,6 +38,50 @@ type SetFn = (partial: LoadableState) => void;
 
 /** Empty map as a safe fallback when fetchBranches fails. */
 const EMPTY_BRANCHES = new Map<string, string>();
+
+/**
+ * Phase E: Admin fast path.
+ * يحمّل البيانات الضرورية لعرض Dashboard و Sessions و Trainees:
+ * - branches (Map + List للمراجع)
+ * - sessionTypes
+ * - sessions
+ * - trainees
+ * - trainers
+ *
+ * يستبعد: bookings, packages, ledger — تُحمَّل في الخلفية عبر loadBackground().
+ */
+export async function loadAdminFastPath(set: SetFn): Promise<void> {
+  const results = await Promise.allSettled([
+    fetchBranches(),
+    fetchBranchesList(),
+    fetchSessionTypesList(),
+    fetchSessions(),
+  ]);
+  const [rBranchesMap, rBranchesList, rSessionTypes, rSessions] = results;
+
+  const branchesMap = rBranchesMap.status === 'fulfilled' ? rBranchesMap.value : EMPTY_BRANCHES;
+  if (rBranchesMap.status === 'rejected') console.error('[loadAdminFastPath branches map]', rBranchesMap.reason);
+
+  // trainees + trainers يحتاجان branchesMap — يُستدعَيان بعدها بالتوازي
+  const [rTrainees, rTrainers] = await Promise.allSettled([
+    fetchTrainees(branchesMap),
+    fetchTrainers(branchesMap),
+  ]);
+
+  const patch: LoadableState = {};
+  if (rBranchesList.status === 'fulfilled') patch.branches = rBranchesList.value;
+  else console.error('[loadAdminFastPath branches list]', rBranchesList.reason);
+  if (rSessionTypes.status === 'fulfilled') patch.sessionTypes = rSessionTypes.value;
+  else console.error('[loadAdminFastPath session_types]', rSessionTypes.reason);
+  if (rSessions.status === 'fulfilled') patch.sessions = rSessions.value;
+  else console.error('[loadAdminFastPath sessions]', rSessions.reason);
+  if (rTrainees.status === 'fulfilled') patch.trainees = rTrainees.value;
+  else console.error('[loadAdminFastPath trainees]', rTrainees.reason);
+  if (rTrainers.status === 'fulfilled') patch.trainers = rTrainers.value;
+  else console.error('[loadAdminFastPath trainers]', rTrainers.reason);
+
+  set(patch);
+}
 
 /** يحمّل البيانات التي تحتاجها واجهة المدربة فقط. */
 export async function loadForTrainer(set: SetFn): Promise<void> {
