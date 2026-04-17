@@ -9,8 +9,8 @@ import { today, daysBetween, formatShortArabic, getGreeting } from '../../lib/da
 
 const formatDateShort = formatShortArabic;
 
-// Hero banner image
-const BANNER = 'https://images.unsplash.com/photo-1758791837823-6552cf6774a3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1200';
+// Hero banner image (Phase G: local)
+const BANNER = '/images/trainee/banner.jpg';
 
 export default function TraineeDashboard() {
   const { user } = useAuth();

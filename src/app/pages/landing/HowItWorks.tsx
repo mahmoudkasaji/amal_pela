@@ -2,10 +2,10 @@ import { steps } from './data';
 
 export default function HowItWorks() {
   const stepImages = [
-    'https://images.unsplash.com/photo-1638186318096-cd3ee2aa9e66?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
-    'https://images.unsplash.com/photo-1523001021477-53f37adf2df3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
-    'https://images.unsplash.com/photo-1669659873450-64d5f78f59e9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
-    'https://images.unsplash.com/photo-1717500251611-882d737823a0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
+    '/images/landing/step-1.jpg',
+    '/images/landing/step-2.jpg',
+    '/images/landing/step-3.jpg',
+    '/images/landing/step-4.jpg',
   ];
 
   const moments = [

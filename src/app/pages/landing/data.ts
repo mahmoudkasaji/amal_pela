@@ -1,9 +1,9 @@
-// ─── Images ─────────────────────────────────────────────────────────────────
-export const IMG_HERO   = 'https://images.unsplash.com/photo-1769610712786-60f5f6e727ce?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1200';
-export const IMG_ABOUT  = 'https://images.unsplash.com/photo-1717500251880-e8209ae23fa8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=700';
-export const IMG_2      = 'https://images.unsplash.com/photo-1637066189302-8d2a241ea9f2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=500';
-export const IMG_3      = 'https://images.unsplash.com/photo-1717500252072-908accb18f55?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=500';
-export const IMG_STUDIO = 'https://images.unsplash.com/photo-1676496962536-d8ef110ff6f0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=700';
+// ─── Images (Phase G: local assets served from /public/images/) ─────────────
+export const IMG_HERO   = '/images/landing/hero.jpg';
+export const IMG_ABOUT  = '/images/landing/about.jpg';
+export const IMG_2      = '/images/landing/about-2.jpg';
+export const IMG_3      = '/images/landing/about-3.jpg';
+export const IMG_STUDIO = '/images/landing/studio.jpg';
 
 // ─── Data ──────────────────────────────────────────────────────────────────
 export const sessions = [
