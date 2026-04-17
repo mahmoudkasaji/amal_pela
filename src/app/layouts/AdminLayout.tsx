@@ -1,5 +1,6 @@
 import { NavLink, Navigate, Outlet, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
+import { InitErrorBanner } from '../components/InitErrorBanner';
 import {
   LayoutDashboard, Users, UserCheck, CalendarDays,
   Package, BookOpen, BarChart2, Settings, LogOut, Flower2, Menu, X
@@ -162,6 +163,7 @@ export default function AdminLayout() {
 
       {/* Main */}
       <main className="flex-1 md:mr-60 mt-14 md:mt-0 min-h-screen" style={{ background: '#f7f8fa' }}>
+        <InitErrorBanner />
         <Outlet />
       </main>
     </div>

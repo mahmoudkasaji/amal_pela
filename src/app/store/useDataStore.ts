@@ -43,6 +43,8 @@ export interface CancelResult extends ActionResult {
 interface DataState {
   initialized: boolean;
   loading:     boolean;
+  /** رسالة خطأ عند فشل التهيئة — الواجهة تعرضها مع زر إعادة المحاولة */
+  initError:   string | null;
 
   trainees: Trainee[];
   trainers: Trainer[];
@@ -110,6 +112,7 @@ import { loadForTrainer, loadForTrainee } from './loaders';
 export const useDataStore = create<DataState>()((set, get) => ({
   initialized: false,
   loading:     false,
+  initError:   null,
 
   trainees: [],
   trainers: [],
@@ -123,7 +126,7 @@ export const useDataStore = create<DataState>()((set, get) => ({
   // ════════════════════════════════════════════════════════════════════════
   initialize: async (role) => {
     if (get().initialized) return;
-    set({ loading: true });
+    set({ loading: true, initError: null });
     try {
       // Route to role-specific loader to minimize network round-trips
       if (role === 'trainer') {
@@ -134,9 +137,20 @@ export const useDataStore = create<DataState>()((set, get) => ({
         // admin (default): full refresh
         await get().refresh();
       }
-      set({ initialized: true });
+    } catch (err) {
+      // إذا حدث خطأ (لا يُفترض بعد أن يكون كل شيء في allSettled)،
+      // نسجّله لكن **لا نمنع** التطبيق من العمل — نُشير إلى الخطأ لكن
+      // نضبط initialized=true ليتمكن المستخدم من استخدام ما تم تحميله
+      console.error('[initialize] unexpected error:', err);
+      set({
+        initError: err instanceof Error
+          ? `تعذّر تحميل بعض البيانات: ${err.message}`
+          : 'تعذّر تحميل بعض البيانات. يرجى إعادة المحاولة.',
+      });
     } finally {
-      set({ loading: false });
+      // initialized دائماً true بعد محاولة التهيئة — حتى مع فشل جزئي
+      // لمنع الـ spinner اللانهائي. الأخطاء تُعرض عبر initError.
+      set({ initialized: true, loading: false });
     }
   },
 
@@ -173,6 +187,7 @@ export const useDataStore = create<DataState>()((set, get) => ({
     set({
       initialized: false,
       loading: false,
+      initError: null,
       trainees: [],
       trainers: [],
       packages: [],

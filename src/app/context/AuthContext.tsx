@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import type { AuthUser } from '../data/types';
 import { supabase } from '../lib/supabase';
 import { resolveLoginEmail } from '../api';
@@ -50,52 +50,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
-  const loadingRef = useRef(false);
-
-  /** تحميل بيانات المستخدم مع حماية من التنفيذ المزدوج. */
-  async function safeLoadAuthUser(userId: string) {
-    if (loadingRef.current) return;
-    loadingRef.current = true;
-    try {
-      const authUser = await loadAuthUser(userId);
-      if (authUser) {
-        setUser(authUser);
-        setAuthError(null);
-        // تحميل البيانات حسب دور المستخدم لتقليل الاستعلامات
-        useDataStore.getState().initialize(authUser.role).catch(console.error);
-      } else {
-        // مصادقة ناجحة لكن فشل تحميل الملف الشخصي
-        setAuthError('تعذّر تحميل بيانات الملف الشخصي. يرجى المحاولة مرة أخرى.');
-      }
-    } catch (err) {
-      console.error('Failed to load auth user:', err);
-      setAuthError('حدث خطأ أثناء تحميل بيانات المستخدم.');
-    } finally {
-      loadingRef.current = false;
-    }
-  }
 
   useEffect(() => {
-    // 1) Load the existing session on mount (Supabase persists it in localStorage)
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        await safeLoadAuthUser(session.user.id);
-      }
-      setLoading(false);
-    });
+    // نعتمد كلياً على onAuthStateChange:
+    // - INITIAL_SESSION: يُطلق عند mount ويُسلّم الجلسة المُخزّنة (إن وُجدت) أو null
+    // - SIGNED_IN: يُطلق عند تسجيل دخول جديد (أو تبديل حساب بين tabs)
+    // - TOKEN_REFRESHED: يُطلق بعد تجديد JWT تلقائياً — لا نُعيد initialize
+    // - SIGNED_OUT: يُطلق عند الخروج
+    // لا نستدعي getSession() يدوياً حتى لا يتم تحميل البيانات مرتين.
+    //
+    // نتتبّع آخر userId عولج لتجنّب تحميل بيانات نفس المستخدم مرتين
+    // عبر أحداث متتالية (INITIAL_SESSION ثم SIGNED_IN على نفس الحساب).
+    let lastLoadedUserId: string | null = null;
+    let cancelled = false;
 
-    // 2) Listen to auth state changes (login/logout from other tabs, refresh, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        await safeLoadAuthUser(session.user.id);
-      } else if (event === 'SIGNED_OUT') {
+    async function handleSession(userId: string | undefined) {
+      if (cancelled) return;
+      if (!userId) {
+        lastLoadedUserId = null;
         setUser(null);
         setAuthError(null);
         useDataStore.getState().reset();
+        setLoading(false);
+        return;
       }
+      if (userId === lastLoadedUserId) {
+        setLoading(false);
+        return;
+      }
+      lastLoadedUserId = userId;
+      try {
+        const authUser = await loadAuthUser(userId);
+        if (cancelled) return;
+        if (authUser) {
+          setUser(authUser);
+          setAuthError(null);
+          useDataStore.getState().initialize(authUser.role).catch(console.error);
+        } else {
+          setAuthError('تعذّر تحميل بيانات الملف الشخصي. يرجى المحاولة مرة أخرى.');
+        }
+      } catch (err) {
+        if (cancelled) return;
+        console.error('Failed to load auth user:', err);
+        setAuthError('حدث خطأ أثناء تحميل بيانات المستخدم.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // TOKEN_REFRESHED لا يحتاج إعادة تحميل — الـ userId نفسه
+      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') return;
+      // INITIAL_SESSION, SIGNED_IN, SIGNED_OUT, PASSWORD_RECOVERY → عالج الجلسة
+      handleSession(session?.user?.id);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   async function login(identifier: string, password: string): Promise<LoginResult> {

@@ -7,6 +7,9 @@
  * - Admin: يستخدم `refresh()` الكامل في الـ store
  * - Trainer: 3 استعلامات (sessions + bookings + trainees)
  * - Trainee: 4 استعلامات (sessions + bookings + packages + ledger)
+ *
+ * Phase A note: كل fetch داخل Promise.allSettled (بما فيها fetchBranches)
+ * لمنع أي فشل جزئي من إسقاط كامل التهيئة.
  */
 
 import type { Trainee, Trainer, Package, Session, Booking, LedgerEntry } from '../data/types';
@@ -24,23 +27,36 @@ export interface LoadableState {
 
 type SetFn = (partial: LoadableState) => void;
 
+/** Empty map as a safe fallback when fetchBranches fails. */
+const EMPTY_BRANCHES = new Map<string, string>();
+
 /** يحمّل البيانات التي تحتاجها واجهة المدربة فقط. */
 export async function loadForTrainer(set: SetFn): Promise<void> {
-  const branches = await fetchBranches();
+  // كل شيء داخل allSettled — حتى فشل fetchBranches لا يُسقط التهيئة
   const results = await Promise.allSettled([
+    fetchBranches(),
     fetchSessions(),
     fetchBookings(),
-    fetchTrainees(branches),
   ]);
-  const [rSessions, rBookings, rTrainees] = results;
+  const [rBranches, rSessions, rBookings] = results;
+
+  const branches = rBranches.status === 'fulfilled' ? rBranches.value : EMPTY_BRANCHES;
+  if (rBranches.status === 'rejected') console.error('[loadForTrainer branches]', rBranches.reason);
+
+  // fetchTrainees يحتاج branches map — نستدعيه بعدها
+  let trainees: Trainee[] | undefined;
+  try {
+    trainees = await fetchTrainees(branches);
+  } catch (err) {
+    console.error('[loadForTrainer trainees]', err);
+  }
 
   const patch: LoadableState = {};
   if (rSessions.status === 'fulfilled') patch.sessions = rSessions.value;
   else console.error('[loadForTrainer sessions]', rSessions.reason);
   if (rBookings.status === 'fulfilled') patch.bookings = rBookings.value;
   else console.error('[loadForTrainer bookings]', rBookings.reason);
-  if (rTrainees.status === 'fulfilled') patch.trainees = rTrainees.value;
-  else console.error('[loadForTrainer trainees]', rTrainees.reason);
+  if (trainees) patch.trainees = trainees;
 
   set(patch);
 }

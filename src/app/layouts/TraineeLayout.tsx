@@ -1,5 +1,6 @@
 import { NavLink, Navigate, Outlet, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
+import { InitErrorBanner } from '../components/InitErrorBanner';
 import { LayoutDashboard, CalendarDays, BookOpen, CreditCard, User, LogOut, Flower2 } from 'lucide-react';
 
 const navItems = [
@@ -120,6 +121,7 @@ export default function TraineeLayout() {
         className="flex-1 md:mr-60 pb-20 md:pb-0 min-h-screen"
         style={{ background: '#f7f8fa' }}
       >
+        <InitErrorBanner />
         <Outlet />
       </main>
 
