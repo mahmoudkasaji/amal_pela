@@ -70,6 +70,7 @@ interface DataState {
   refreshTrainees: () => Promise<void>;
   refreshTrainers: () => Promise<void>;
   refreshPackages: () => Promise<void>;
+  refreshLedger:   () => Promise<void>;
 
   // ─── عمليات المتدربة ─────
   bookSession:    (traineeId: string, sessionId: string) => Promise<BookResult>;
@@ -220,6 +221,10 @@ export const useDataStore = create<DataState>()((set, get) => ({
     try { const packages = await fetchPackages(); set({ packages }); }
     catch (e) { console.error('[refreshPackages]', e); }
   },
+  refreshLedger: async () => {
+    try { const ledger = await fetchLedger(); set({ ledger }); }
+    catch (e) { console.error('[refreshLedger]', e); }
+  },
 
   // ════════════════════════════════════════════════════════════════════════
   // عمليات المتدربة
@@ -227,15 +232,16 @@ export const useDataStore = create<DataState>()((set, get) => ({
   bookSession: async (_traineeId, sessionId) => {
     const res = await rpcBookSession(sessionId);
     if (!res.ok) return { ok: false, reason: res.reason };
-    // نحدّث من DB بعد العملية لضمان اتساق (session.enrolled، booking)
-    await Promise.all([get().refreshBookings(), get().refreshSessions()]);
+    // نحدّث من DB بعد العملية: bookings (الحجز الجديد)، sessions (enrolled)، ledger (خصم الجلسة)
+    await Promise.all([get().refreshBookings(), get().refreshSessions(), get().refreshLedger()]);
     return { ok: true };
   },
 
   cancelBooking: async (bookingId, opts) => {
     const res = await rpcCancelBooking(bookingId, opts?.forceRefund ?? false);
     if (!res.ok) return { ok: false, refunded: false, reason: res.reason };
-    await Promise.all([get().refreshBookings(), get().refreshSessions()]);
+    // ledger يتحدّث (credit إن كان الإلغاء مسترَداً)
+    await Promise.all([get().refreshBookings(), get().refreshSessions(), get().refreshLedger()]);
     // نستنتج refunded من حالة الحجز بعد التحديث
     const booking = get().bookings.find(b => b.id === bookingId);
     return { ok: true, refunded: booking?.status === 'cancelled_with_refund' };
@@ -281,35 +287,40 @@ export const useDataStore = create<DataState>()((set, get) => ({
   assignPackage: async (traineeId, packageId, startDate) => {
     const res = await rpcAssignPackage(traineeId, packageId, startDate);
     if (!res.ok) return { ok: false, reason: res.reason };
-    await get().refreshTrainees();
+    // ledger يتحدّث (credit بعدد جلسات الباقة)
+    await Promise.all([get().refreshTrainees(), get().refreshLedger()]);
     return { ok: true };
   },
 
   freezeSubscription: async (traineeId) => {
     const res = await rpcFreezeSubscription(traineeId);
     if (!res.ok) return { ok: false, reason: res.reason };
-    await get().refreshTrainees();
+    // ledger يتحدّث (entry للتجميد بقيمة 0)
+    await Promise.all([get().refreshTrainees(), get().refreshLedger()]);
     return { ok: true };
   },
 
   unfreezeSubscription: async (traineeId) => {
     const res = await rpcUnfreezeSubscription(traineeId);
     if (!res.ok) return { ok: false, reason: res.reason };
-    await get().refreshTrainees();
+    // ledger يتحدّث (entry لإعادة التفعيل)
+    await Promise.all([get().refreshTrainees(), get().refreshLedger()]);
     return { ok: true };
   },
 
   extendSubscription: async (traineeId, days) => {
     const res = await rpcExtendSubscription(traineeId, days);
     if (!res.ok) return { ok: false, reason: res.reason };
-    await get().refreshTrainees();
+    // ledger يتحدّث (entry بتوثيق التمديد)
+    await Promise.all([get().refreshTrainees(), get().refreshLedger()]);
     return { ok: true };
   },
 
   adjustBalance: async (traineeId, delta, reason) => {
     const res = await rpcAdjustBalance(traineeId, delta, reason);
     if (!res.ok) return { ok: false, reason: res.reason };
-    await get().refreshTrainees();
+    // ledger يتحدّث (entry يدوي بالقيمة) — هذا الأهم: سجل التعديل يجب أن يظهر فوراً
+    await Promise.all([get().refreshTrainees(), get().refreshLedger()]);
     return { ok: true };
   },
 

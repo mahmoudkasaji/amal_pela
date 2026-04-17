@@ -12,6 +12,7 @@ export const ACCOUNT_STATUS_CONFIG: Record<AccountStatus, { label: string; bg: s
 export const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string }> = {
   confirmed:             { label: 'مؤكد',         bg: '#eff6ff', color: '#2563eb' },
   attended:              { label: 'حضر',           bg: '#f0fdf4', color: '#16a34a' },
+  late:                  { label: 'متأخرة',        bg: '#fef3c7', color: '#b45309' },
   absent:                { label: 'غياب',          bg: '#f8fafc', color: '#94a3b8' },
   cancelled_with_refund: { label: 'ملغى مسترد',    bg: '#fffbeb', color: '#d97706' },
   cancelled_no_refund:   { label: 'إلغاء متأخر',   bg: '#fef2f2', color: '#dc2626' },
